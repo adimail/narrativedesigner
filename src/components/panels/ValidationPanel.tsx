@@ -21,8 +21,8 @@ export const ValidationPanel = () => {
   const [spriteX, setSpriteX] = useState(0);
 
   useEffect(() => {
-    let showTimeout: NodeJS.Timeout;
-    let hideTimeout: NodeJS.Timeout;
+    let showTimeout: number;
+    let hideTimeout: number;
 
     const scheduleNextSprite = () => {
       const delay = Math.floor(Math.random() * 5000) + 3000;
