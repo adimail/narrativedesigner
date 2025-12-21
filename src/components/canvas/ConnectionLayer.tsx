@@ -1,7 +1,7 @@
+import React, { useMemo } from "react";
 import { useStore } from "../../store/useStore";
 import { getCoordinates, getRouteLayout } from "../../lib/utils";
 import { GRID_CONFIG, COLORS } from "../../lib/constants";
-import { useMemo } from "react";
 
 export const ConnectionLayer = () => {
   const nodes = useStore((state) => state.nodes);
@@ -18,7 +18,6 @@ export const ConnectionLayer = () => {
     )
     .filter(Boolean);
 
-  // Calculate stacking index for source and target
   const getStackIndex = (node: (typeof nodes)[0]) => {
     const siblings = nodes.filter(
       (n) =>
@@ -35,6 +34,17 @@ export const ConnectionLayer = () => {
   const totalCols = 28 * 4;
   const width = GRID_CONFIG.sidebarWidth + totalCols * GRID_CONFIG.colWidth;
   const height = layoutMap.totalHeight;
+
+  const handleLinkClick = (
+    e: React.MouseEvent,
+    sourceId: string,
+    targetId: string,
+  ) => {
+    if (e.ctrlKey) {
+      e.stopPropagation();
+      disconnectNodes(sourceId, targetId);
+    }
+  };
 
   return (
     <svg

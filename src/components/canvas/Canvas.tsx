@@ -37,7 +37,6 @@ export const Canvas = () => {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Calculate dynamic layout for hit testing
   const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
@@ -72,7 +71,6 @@ export const Canvas = () => {
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
 
-      // Pass layoutMap to handle dynamic row heights
       const { day, time, route } = getGridPositionFromCoordinates(
         x,
         y,

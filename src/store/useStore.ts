@@ -35,6 +35,7 @@ interface StoreState {
   validateAll: () => void;
   importData: (data: ScenarioNode[]) => void;
   loadSampleData: () => void;
+  clearAll: () => void; // New action
   setScale: (scale: number) => void;
   togglePropertiesPanel: () => void;
   toggleValidationPanel: () => void;
@@ -319,6 +320,14 @@ export const useStore = create<StoreState>()(
           validationIssues: [],
         });
         get().validateAll();
+      },
+
+      clearAll: () => {
+        set({
+          nodes: [],
+          selectedNodeIds: [],
+          validationIssues: [],
+        });
       },
 
       setScale: (scale) => set({ scale }),

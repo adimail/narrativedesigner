@@ -29,7 +29,6 @@ export const ScenarioNode = ({
   const hasError = issues.some((i) => i.type === "error");
   const hasWarning = issues.some((i) => i.type === "warning");
 
-  // Calculate stack index
   const siblings = nodes.filter(
     (n) =>
       n.gridPosition.day === node.gridPosition.day &&
@@ -39,7 +38,6 @@ export const ScenarioNode = ({
   siblings.sort((a, b) => a.id.localeCompare(b.id));
   const stackIndex = siblings.findIndex((n) => n.id === node.id);
 
-  // Get dynamic layout
   const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
 
   const coords = getCoordinates(

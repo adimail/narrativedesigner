@@ -22,10 +22,8 @@ export function getRouteLayout(nodes: ScenarioNode[]) {
   let currentY = GRID_CONFIG.headerHeight;
 
   ROUTES.forEach((route) => {
-    // 1. Find the maximum stack depth for this route across all days/times
     let maxStack = 0;
 
-    // Optimization: Filter nodes for this route once
     const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
 
     DAYS.forEach((day) => {
@@ -37,12 +35,9 @@ export function getRouteLayout(nodes: ScenarioNode[]) {
       });
     });
 
-    // 2. Calculate required height
-    // Base padding + (StackDepth * Offset) + NodeHeight
-    // We ensure at least minRowHeight
     const effectiveStack = Math.max(1, maxStack);
     const requiredHeight =
-      40 + // Top/Bottom padding
+      40 +
       (effectiveStack - 1) * GRID_CONFIG.stackOffset +
       GRID_CONFIG.nodeHeight;
 
@@ -65,12 +60,9 @@ export function getCoordinates(
   const dayIndex = DAYS.indexOf(day);
   const timeIndex = TIMES.indexOf(time);
 
-  // Calculate column index (4 columns per day)
   const globalColIndex = dayIndex * 4 + timeIndex;
   const x = GRID_CONFIG.sidebarWidth + globalColIndex * GRID_CONFIG.colWidth;
 
-  // Calculate Y based on dynamic layout
-  // If layoutMap isn't provided (edge case), fallback to static math
   let y = GRID_CONFIG.headerHeight;
   if (layoutMap && layoutMap.routes[route]) {
     y = layoutMap.routes[route].top;
@@ -79,13 +71,12 @@ export function getCoordinates(
     y = GRID_CONFIG.headerHeight + routeIndex * GRID_CONFIG.minRowHeight;
   }
 
-  // Stack offset
   const stackOffsetY = indexInSlot * GRID_CONFIG.stackOffset;
-  const stackOffsetX = indexInSlot * 5; // Slight horizontal shift for depth effect
+  const stackOffsetX = indexInSlot * 5;
 
   return {
     x: x + stackOffsetX,
-    y: y + 20 + stackOffsetY, // +20 for top padding inside the row
+    y: y + 20 + stackOffsetY,
   };
 }
 
@@ -96,7 +87,6 @@ export function getGridPositionFromCoordinates(
 ) {
   const adjustedX = Math.max(0, x - GRID_CONFIG.sidebarWidth);
 
-  // 1. Determine Column (Day/Time)
   const globalColIndex = Math.floor(adjustedX / GRID_CONFIG.colWidth);
   const dayIndex = Math.floor(globalColIndex / 4);
   const timeIndex = globalColIndex % 4;
@@ -104,10 +94,8 @@ export function getGridPositionFromCoordinates(
   const clampedDay = Math.max(0, Math.min(dayIndex, DAYS.length - 1));
   const clampedTime = Math.max(0, Math.min(timeIndex, TIMES.length - 1));
 
-  // 2. Determine Row (Route) using dynamic heights
   let foundRoute = ROUTES[0];
 
-  // Iterate through layout to find which Y range matches
   for (const route of ROUTES) {
     const layout = layoutMap.routes[route];
     if (y >= layout.top && y < layout.top + layout.height) {
@@ -116,7 +104,6 @@ export function getGridPositionFromCoordinates(
     }
   }
 
-  // Edge case: if below the last row, snap to last route
   const lastRoute = ROUTES[ROUTES.length - 1];
   const lastLayout = layoutMap.routes[lastRoute];
   if (y >= lastLayout.top + lastLayout.height) {

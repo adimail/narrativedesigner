@@ -1,4 +1,4 @@
-import { Download, Upload, Moon, Sun } from "lucide-react";
+import { Download, Upload, Moon, Sun, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useStore } from "../../store/useStore";
 import { ScenarioNode } from "../../types/schema";
@@ -10,11 +10,11 @@ export const Toolbar = () => {
   const validateAll = useStore((state) => state.validateAll);
   const darkMode = useStore((state) => state.darkMode);
   const toggleDarkMode = useStore((state) => state.toggleDarkMode);
+  const clearAll = useStore((state) => state.clearAll);
 
   const handleExport = () => {
     validateAll();
 
-    // Clean export: Remove scenarioId and gridPosition
     const cleanNodes = nodes.map((node) => {
       const { scenarioId, gridPosition, ...rest } = node;
       return rest;
@@ -53,6 +53,16 @@ export const Toolbar = () => {
     reader.readAsText(file);
   };
 
+  const handleClear = () => {
+    if (
+      window.confirm(
+        "Are you sure you want to clear the entire canvas? This action cannot be undone.",
+      )
+    ) {
+      clearAll();
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -86,6 +96,13 @@ export const Toolbar = () => {
           ) : (
             <Moon className="w-5 h-5" />
           )}
+        </Button>
+
+        <div className="h-8 w-px bg-gray-300 mx-2" />
+
+        <Button variant="destructive" size="sm" onClick={handleClear}>
+          <Trash2 className="w-4 h-4 mr-2" />
+          CLEAR_ALL
         </Button>
 
         <div className="relative">

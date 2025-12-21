@@ -7,7 +7,6 @@ export const GridBackground = () => {
   const darkMode = useStore((state) => state.darkMode);
   const nodes = useStore((state) => state.nodes);
 
-  // Calculate dynamic layout
   const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
 
   const totalCols = DAYS.length * 4;
@@ -53,14 +52,10 @@ export const GridBackground = () => {
                   GRID_CONFIG.sidebarWidth + globalCol * GRID_CONFIG.colWidth,
                 width: GRID_CONFIG.colWidth,
                 top: 0,
-                // Use specific dark mode colors or light mode colors
                 backgroundColor: darkMode
                   ? COLORS.timeSlotsDark[time]
                   : COLORS.timeSlots[time],
                 borderColor: darkMode ? "#334155" : COLORS.gridLine,
-                // Adjust opacity:
-                // Light mode needs 0.5 to look pastel.
-                // Dark mode needs 0.4 to blend with the slate-900 background but remain distinct.
                 opacity: darkMode ? 0.4 : 0.5,
               }}
             />
