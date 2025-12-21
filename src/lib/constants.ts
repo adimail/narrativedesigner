@@ -16,12 +16,13 @@ export const ROUTES: RouteEnum[] = [
 ];
 
 export const GRID_CONFIG = {
-  colWidth: 220,
-  minRowHeight: 200,
+  minColWidth: 450,
+  nodeWidth: 240,
+  nodeGap: 100,
+  rowHeight: 300,
   headerHeight: 60,
   sidebarWidth: 120,
-  nodeHeight: 80,
-  stackOffset: 50,
+  nodeHeight: 160,
 };
 
 export const COLORS = {
@@ -30,14 +31,12 @@ export const COLORS = {
   gridLine: "#e5e7eb",
   connection: "#4b5563",
   connectionActive: "#ef4444",
-
   timeSlots: {
     Morning: "#bfdbfe",
     Afternoon: "#dcfce7",
     Evening: "#ffedd5",
     Night: "#e2e8f0",
   },
-
   timeSlotsDark: {
     Morning: "#172554",
     Afternoon: "#052e16",

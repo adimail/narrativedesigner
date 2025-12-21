@@ -6,7 +6,7 @@ import { ConnectionLayer } from "./ConnectionLayer";
 import { ScenarioNode } from "./ScenarioNode";
 import {
   getGridPositionFromCoordinates,
-  getRouteLayout,
+  getColumnLayout,
 } from "../../lib/utils";
 import { GRID_CONFIG, DAYS, ROUTES } from "../../lib/constants";
 import { Button } from "../ui/button";
@@ -37,7 +37,7 @@ export const Canvas = () => {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
+  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -122,9 +122,9 @@ export const Canvas = () => {
     }
   };
 
-  const totalWidth =
-    GRID_CONFIG.sidebarWidth + DAYS.length * 4 * GRID_CONFIG.colWidth;
-  const totalHeight = layoutMap.totalHeight;
+  const totalWidth = layoutMap.totalWidth;
+  const totalHeight =
+    GRID_CONFIG.headerHeight + ROUTES.length * GRID_CONFIG.rowHeight;
 
   return (
     <div

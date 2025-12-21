@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { ScenarioNode as NodeType } from "../../types/schema";
-import { getCoordinates, getRouteLayout } from "../../lib/utils";
+import { getCoordinates, getColumnLayout } from "../../lib/utils";
 import { GRID_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
@@ -38,7 +38,7 @@ export const ScenarioNode = ({
   siblings.sort((a, b) => a.id.localeCompare(b.id));
   const stackIndex = siblings.findIndex((n) => n.id === node.id);
 
-  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
+  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
 
   const coords = getCoordinates(
     node.gridPosition.day,
@@ -65,9 +65,9 @@ export const ScenarioNode = ({
             : "",
       )}
       style={{
-        left: coords.x + 10,
+        left: coords.x,
         top: coords.y,
-        width: GRID_CONFIG.colWidth - 20,
+        width: GRID_CONFIG.nodeWidth,
         height: GRID_CONFIG.nodeHeight,
       }}
       onMouseDown={(e) => onMouseDown(e, node.id)}
@@ -75,7 +75,7 @@ export const ScenarioNode = ({
     >
       <div
         className={cn(
-          "px-2 py-1 border-b-2 flex items-center justify-between",
+          "px-2 py-1 border-b-2 flex items-center justify-between shrink-0",
           darkMode
             ? "border-slate-500 bg-white/10"
             : "border-black bg-white/20",
@@ -93,14 +93,45 @@ export const ScenarioNode = ({
         </div>
       </div>
 
-      <div className="p-2 text-[10px] space-y-1 overflow-hidden leading-tight">
-        <div className="flex justify-between">
-          <span className="font-bold opacity-70">L:</span>
-          <span>{node.loadInfo.immediately ? "NOW" : "WAIT"}</span>
+      <div className="p-2 text-[10px] space-y-2 overflow-y-auto leading-tight flex-1">
+        <div className="space-y-1">
+          <div className="font-bold opacity-70 border-b border-current/20 pb-0.5">
+            LOAD
+          </div>
+          <div className="flex justify-between">
+            <span>Type:</span>
+            <span className="font-bold">
+              {node.loadInfo.immediately ? "IMMEDIATE" : "WAIT"}
+            </span>
+          </div>
+          {!node.loadInfo.immediately && (
+            <div className="flex flex-col">
+              <span className="opacity-70">After:</span>
+              <span className="truncate font-mono text-[9px]">
+                {node.loadInfo.afterScenario}
+              </span>
+            </div>
+          )}
         </div>
-        <div className="flex justify-between">
-          <span className="font-bold opacity-70">E:</span>
-          <span>{node.endInfo.immediately ? "NOW" : "WAIT"}</span>
+
+        <div className="space-y-1">
+          <div className="font-bold opacity-70 border-b border-current/20 pb-0.5">
+            END
+          </div>
+          <div className="flex justify-between">
+            <span>Type:</span>
+            <span className="font-bold">
+              {node.endInfo.immediately ? "IMMEDIATE" : "WAIT"}
+            </span>
+          </div>
+          {!node.endInfo.immediately && (
+            <div className="flex flex-col">
+              <span className="opacity-70">After:</span>
+              <span className="truncate font-mono text-[9px]">
+                {node.endInfo.afterScenario}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

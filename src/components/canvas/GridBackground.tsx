@@ -1,17 +1,17 @@
 import { DAYS, TIMES, ROUTES, GRID_CONFIG, COLORS } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
-import { cn, getRouteLayout } from "../../lib/utils";
+import { cn, getColumnLayout } from "../../lib/utils";
 import { useMemo } from "react";
 
 export const GridBackground = () => {
   const darkMode = useStore((state) => state.darkMode);
   const nodes = useStore((state) => state.nodes);
 
-  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
+  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
 
-  const totalCols = DAYS.length * 4;
-  const width = GRID_CONFIG.sidebarWidth + totalCols * GRID_CONFIG.colWidth;
-  const height = layoutMap.totalHeight;
+  const width = layoutMap.totalWidth;
+  const height =
+    GRID_CONFIG.headerHeight + ROUTES.length * GRID_CONFIG.rowHeight;
 
   return (
     <div
@@ -21,36 +21,31 @@ export const GridBackground = () => {
       )}
       style={{ width, height }}
     >
-      {/* Route Rows (Background) */}
-      {ROUTES.map((route) => {
-        const routeLayout = layoutMap.routes[route];
-        return (
-          <div
-            key={route}
-            className={cn(
-              "absolute w-full border-b transition-all duration-300 ease-in-out",
-              darkMode ? "border-slate-700" : "border-gray-200",
-            )}
-            style={{
-              top: routeLayout.top,
-              height: routeLayout.height,
-            }}
-          />
-        );
-      })}
+      {ROUTES.map((route, r) => (
+        <div
+          key={route}
+          className={cn(
+            "absolute w-full border-b transition-all duration-300 ease-in-out",
+            darkMode ? "border-slate-700" : "border-gray-200",
+          )}
+          style={{
+            top: GRID_CONFIG.headerHeight + r * GRID_CONFIG.rowHeight,
+            height: GRID_CONFIG.rowHeight,
+          }}
+        />
+      ))}
 
-      {/* Time Columns (Background Colors) */}
-      {DAYS.map((day, d) =>
-        TIMES.map((time, t) => {
-          const globalCol = d * 4 + t;
+      {DAYS.map((day) =>
+        TIMES.map((time) => {
+          const key = `${day}-${time}`;
+          const col = layoutMap.columns[key];
           return (
             <div
-              key={`${day}-${time}`}
-              className="absolute h-full border-r"
+              key={key}
+              className="absolute h-full border-r transition-all duration-300 ease-in-out"
               style={{
-                left:
-                  GRID_CONFIG.sidebarWidth + globalCol * GRID_CONFIG.colWidth,
-                width: GRID_CONFIG.colWidth,
+                left: col.startX,
+                width: col.width,
                 top: 0,
                 backgroundColor: darkMode
                   ? COLORS.timeSlotsDark[time]
@@ -63,45 +58,51 @@ export const GridBackground = () => {
         }),
       )}
 
-      {/* Day Headers */}
-      {DAYS.map((day, i) => (
-        <div
-          key={day}
-          className={cn(
-            "absolute border-r border-b flex items-center justify-center text-sm font-bold z-10",
-            darkMode
-              ? "bg-slate-800 text-white border-slate-600"
-              : "bg-gray-100 text-black border-black",
-          )}
-          style={{
-            left: GRID_CONFIG.sidebarWidth + i * (GRID_CONFIG.colWidth * 4),
-            top: 0,
-            width: GRID_CONFIG.colWidth * 4,
-            height: GRID_CONFIG.headerHeight / 2,
-          }}
-        >
-          {day}
-        </div>
-      ))}
+      {DAYS.map((day) => {
+        const startKey = `${day}-Morning`;
+        const endKey = `${day}-Night`;
+        const startCol = layoutMap.columns[startKey];
+        const endCol = layoutMap.columns[endKey];
+        const dayWidth = endCol.startX + endCol.width - startCol.startX;
 
-      {/* Time Sub-Headers */}
-      {DAYS.map((day, d) =>
-        TIMES.map((time, t) => {
-          const globalCol = d * 4 + t;
+        return (
+          <div
+            key={day}
+            className={cn(
+              "absolute border-r border-b flex items-center justify-center text-sm font-bold z-10 transition-all duration-300 ease-in-out",
+              darkMode
+                ? "bg-slate-800 text-white border-slate-600"
+                : "bg-gray-100 text-black border-black",
+            )}
+            style={{
+              left: startCol.startX,
+              top: 0,
+              width: dayWidth,
+              height: GRID_CONFIG.headerHeight / 2,
+            }}
+          >
+            {day}
+          </div>
+        );
+      })}
+
+      {DAYS.map((day) =>
+        TIMES.map((time) => {
+          const key = `${day}-${time}`;
+          const col = layoutMap.columns[key];
           return (
             <div
               key={`${day}-header-${time}`}
               className={cn(
-                "absolute border-r border-b flex items-center justify-center text-xs font-bold z-10",
+                "absolute border-r border-b flex items-center justify-center text-xs font-bold z-10 transition-all duration-300 ease-in-out",
                 darkMode
                   ? "bg-slate-800 text-slate-300 border-slate-600"
                   : "bg-gray-50 text-gray-600 border-black",
               )}
               style={{
-                left:
-                  GRID_CONFIG.sidebarWidth + globalCol * GRID_CONFIG.colWidth,
+                left: col.startX,
                 top: GRID_CONFIG.headerHeight / 2,
-                width: GRID_CONFIG.colWidth,
+                width: col.width,
                 height: GRID_CONFIG.headerHeight / 2,
               }}
             >
@@ -111,31 +112,26 @@ export const GridBackground = () => {
         }),
       )}
 
-      {/* Route Sidebar */}
-      {ROUTES.map((route) => {
-        const routeLayout = layoutMap.routes[route];
-        return (
-          <div
-            key={route}
-            className={cn(
-              "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20 transition-all duration-300 ease-in-out",
-              darkMode
-                ? "bg-slate-800 text-white border-slate-600"
-                : "bg-gray-100 text-black border-black",
-            )}
-            style={{
-              left: 0,
-              top: routeLayout.top,
-              width: GRID_CONFIG.sidebarWidth,
-              height: routeLayout.height,
-            }}
-          >
-            {route}
-          </div>
-        );
-      })}
+      {ROUTES.map((route, i) => (
+        <div
+          key={route}
+          className={cn(
+            "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20 transition-all duration-300 ease-in-out",
+            darkMode
+              ? "bg-slate-800 text-white border-slate-600"
+              : "bg-gray-100 text-black border-black",
+          )}
+          style={{
+            left: 0,
+            top: GRID_CONFIG.headerHeight + i * GRID_CONFIG.rowHeight,
+            width: GRID_CONFIG.sidebarWidth,
+            height: GRID_CONFIG.rowHeight,
+          }}
+        >
+          {route}
+        </div>
+      ))}
 
-      {/* Top-Left Corner */}
       <div
         className={cn(
           "absolute top-0 left-0 border-r border-b z-20",

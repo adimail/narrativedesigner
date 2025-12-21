@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useStore } from "../../store/useStore";
-import { getCoordinates, getRouteLayout } from "../../lib/utils";
+import { getCoordinates, getColumnLayout } from "../../lib/utils";
 import { GRID_CONFIG, COLORS } from "../../lib/constants";
 
 export const ConnectionLayer = () => {
@@ -29,11 +29,10 @@ export const ConnectionLayer = () => {
     return siblings.findIndex((n) => n.id === node.id);
   };
 
-  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
+  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
 
-  const totalCols = 28 * 4;
-  const width = GRID_CONFIG.sidebarWidth + totalCols * GRID_CONFIG.colWidth;
-  const height = layoutMap.totalHeight;
+  const width = layoutMap.totalWidth;
+  const height = GRID_CONFIG.headerHeight + 5 * GRID_CONFIG.rowHeight;
 
   const handleLinkClick = (
     e: React.MouseEvent,
@@ -72,9 +71,9 @@ export const ConnectionLayer = () => {
           layoutMap,
         );
 
-        const startX = start.x + GRID_CONFIG.colWidth - 20;
+        const startX = start.x + GRID_CONFIG.nodeWidth;
         const startY = start.y + GRID_CONFIG.nodeHeight / 2;
-        const endX = end.x + 20;
+        const endX = end.x;
         const endY = end.y + GRID_CONFIG.nodeHeight / 2;
 
         const controlPointOffset = Math.abs(endX - startX) * 0.5;
@@ -87,7 +86,6 @@ export const ConnectionLayer = () => {
             key={`${conn.source.id}-${conn.target.id}-${idx}`}
             className="pointer-events-auto group"
           >
-            {/* Invisible wide path for easier clicking */}
             <path
               d={path}
               fill="none"
@@ -98,7 +96,6 @@ export const ConnectionLayer = () => {
                 handleLinkClick(e, conn.source.id, conn.target.id)
               }
             />
-            {/* Visible path */}
             <path
               d={path}
               fill="none"

@@ -13,41 +13,37 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Calculates the dynamic height and Y-position for each route
- * based on how many nodes are stacked in them.
- */
-export function getRouteLayout(nodes: ScenarioNode[]) {
-  const layout: Record<string, { top: number; height: number }> = {};
-  let currentY = GRID_CONFIG.headerHeight;
+export function getColumnLayout(nodes: ScenarioNode[]) {
+  const columnLayout: Record<string, { startX: number; width: number }> = {};
+  let currentX = GRID_CONFIG.sidebarWidth;
 
-  ROUTES.forEach((route) => {
-    let maxStack = 0;
+  DAYS.forEach((day) => {
+    TIMES.forEach((time) => {
+      let maxNodesInSlot = 0;
 
-    const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
-
-    DAYS.forEach((day) => {
-      TIMES.forEach((time) => {
-        const count = routeNodes.filter(
-          (n) => n.gridPosition.day === day && n.gridPosition.time === time,
+      ROUTES.forEach((route) => {
+        const count = nodes.filter(
+          (n) =>
+            n.gridPosition.day === day &&
+            n.gridPosition.time === time &&
+            n.gridPosition.route === route,
         ).length;
-        if (count > maxStack) maxStack = count;
+        if (count > maxNodesInSlot) maxNodesInSlot = count;
       });
+
+      const effectiveCount = Math.max(1, maxNodesInSlot);
+      const requiredWidth =
+        effectiveCount * GRID_CONFIG.nodeWidth +
+        (effectiveCount + 1) * GRID_CONFIG.nodeGap;
+
+      const width = Math.max(GRID_CONFIG.minColWidth, requiredWidth);
+
+      columnLayout[`${day}-${time}`] = { startX: currentX, width };
+      currentX += width;
     });
-
-    const effectiveStack = Math.max(1, maxStack);
-    const requiredHeight =
-      40 +
-      (effectiveStack - 1) * GRID_CONFIG.stackOffset +
-      GRID_CONFIG.nodeHeight;
-
-    const height = Math.max(GRID_CONFIG.minRowHeight, requiredHeight);
-
-    layout[route] = { top: currentY, height };
-    currentY += height;
   });
 
-  return { routes: layout, totalHeight: currentY };
+  return { columns: columnLayout, totalWidth: currentX };
 }
 
 export function getCoordinates(
@@ -55,65 +51,74 @@ export function getCoordinates(
   time: TimeEnum,
   route: RouteEnum,
   indexInSlot: number = 0,
-  layoutMap?: ReturnType<typeof getRouteLayout>,
+  layoutMap?: ReturnType<typeof getColumnLayout>,
 ) {
-  const dayIndex = DAYS.indexOf(day);
-  const timeIndex = TIMES.indexOf(time);
+  const routeIndex = ROUTES.indexOf(route);
+  const y = GRID_CONFIG.headerHeight + routeIndex * GRID_CONFIG.rowHeight + 20;
 
-  const globalColIndex = dayIndex * 4 + timeIndex;
-  const x = GRID_CONFIG.sidebarWidth + globalColIndex * GRID_CONFIG.colWidth;
+  let x = 0;
 
-  let y = GRID_CONFIG.headerHeight;
-  if (layoutMap && layoutMap.routes[route]) {
-    y = layoutMap.routes[route].top;
+  if (layoutMap) {
+    const colKey = `${day}-${time}`;
+    const colData = layoutMap.columns[colKey];
+    if (colData) {
+      x =
+        colData.startX +
+        GRID_CONFIG.nodeGap +
+        indexInSlot * (GRID_CONFIG.nodeWidth + GRID_CONFIG.nodeGap);
+    }
   } else {
-    const routeIndex = ROUTES.indexOf(route);
-    y = GRID_CONFIG.headerHeight + routeIndex * GRID_CONFIG.minRowHeight;
+    const dayIndex = DAYS.indexOf(day);
+    const timeIndex = TIMES.indexOf(time);
+    const globalColIndex = dayIndex * 4 + timeIndex;
+    x =
+      GRID_CONFIG.sidebarWidth +
+      globalColIndex * GRID_CONFIG.minColWidth +
+      GRID_CONFIG.nodeGap;
   }
 
-  const stackOffsetY = indexInSlot * GRID_CONFIG.stackOffset;
-  const stackOffsetX = indexInSlot * 5;
-
-  return {
-    x: x + stackOffsetX,
-    y: y + 20 + stackOffsetY,
-  };
+  return { x, y };
 }
 
 export function getGridPositionFromCoordinates(
   x: number,
   y: number,
-  layoutMap: ReturnType<typeof getRouteLayout>,
+  layoutMap: ReturnType<typeof getColumnLayout>,
 ) {
-  const adjustedX = Math.max(0, x - GRID_CONFIG.sidebarWidth);
+  const adjustedY = Math.max(0, y - GRID_CONFIG.headerHeight);
+  const routeIndex = Math.floor(adjustedY / GRID_CONFIG.rowHeight);
+  const clampedRoute = Math.max(0, Math.min(routeIndex, ROUTES.length - 1));
+  const route = ROUTES[clampedRoute];
 
-  const globalColIndex = Math.floor(adjustedX / GRID_CONFIG.colWidth);
-  const dayIndex = Math.floor(globalColIndex / 4);
-  const timeIndex = globalColIndex % 4;
+  let foundDay = DAYS[0];
+  let foundTime = TIMES[0];
 
-  const clampedDay = Math.max(0, Math.min(dayIndex, DAYS.length - 1));
-  const clampedTime = Math.max(0, Math.min(timeIndex, TIMES.length - 1));
-
-  let foundRoute = ROUTES[0];
-
-  for (const route of ROUTES) {
-    const layout = layoutMap.routes[route];
-    if (y >= layout.top && y < layout.top + layout.height) {
-      foundRoute = route;
-      break;
+  for (const day of DAYS) {
+    for (const time of TIMES) {
+      const key = `${day}-${time}`;
+      const col = layoutMap.columns[key];
+      if (x >= col.startX && x < col.startX + col.width) {
+        foundDay = day;
+        foundTime = time;
+        break;
+      }
     }
   }
 
-  const lastRoute = ROUTES[ROUTES.length - 1];
-  const lastLayout = layoutMap.routes[lastRoute];
-  if (y >= lastLayout.top + lastLayout.height) {
-    foundRoute = lastRoute;
+  const lastDay = DAYS[DAYS.length - 1];
+  const lastTime = TIMES[TIMES.length - 1];
+  const lastKey = `${lastDay}-${lastTime}`;
+  const lastCol = layoutMap.columns[lastKey];
+
+  if (x >= lastCol.startX + lastCol.width) {
+    foundDay = lastDay;
+    foundTime = lastTime;
   }
 
   return {
-    day: DAYS[clampedDay],
-    time: TIMES[clampedTime],
-    route: foundRoute,
+    day: foundDay,
+    time: foundTime,
+    route,
   };
 }
 
