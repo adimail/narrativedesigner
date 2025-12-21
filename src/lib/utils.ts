@@ -1,8 +1,9 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { DAYS, TIMES, GRID_CONFIG } from "./constants";
+import { DAYS, TIMES, ROUTES, GRID_CONFIG } from "./constants";
 import {
   DayEnum,
+  RouteEnum,
   ScenarioNode,
   TimeEnum,
   ValidationIssue,
@@ -12,13 +13,29 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getCoordinates(day: DayEnum, time: TimeEnum) {
-  const colIndex = DAYS.indexOf(day);
-  const rowIndex = TIMES.indexOf(time);
+export function getCoordinates(
+  day: DayEnum,
+  time: TimeEnum,
+  route: RouteEnum,
+  indexInSlot: number = 0,
+) {
+  const dayIndex = DAYS.indexOf(day);
+  const timeIndex = TIMES.indexOf(time);
+  const routeIndex = ROUTES.indexOf(route);
+
+  // Calculate column index (4 columns per day)
+  const globalColIndex = dayIndex * 4 + timeIndex;
+
+  const x = GRID_CONFIG.sidebarWidth + globalColIndex * GRID_CONFIG.colWidth;
+  const y = GRID_CONFIG.headerHeight + routeIndex * GRID_CONFIG.rowHeight;
+
+  // Stack offset
+  const stackOffsetY = indexInSlot * 30;
+  const stackOffsetX = indexInSlot * 5;
 
   return {
-    x: GRID_CONFIG.sidebarWidth + colIndex * GRID_CONFIG.colWidth,
-    y: GRID_CONFIG.headerHeight + rowIndex * GRID_CONFIG.rowHeight,
+    x: x + stackOffsetX,
+    y: y + stackOffsetY,
   };
 }
 
@@ -26,15 +43,20 @@ export function getGridPositionFromCoordinates(x: number, y: number) {
   const adjustedX = Math.max(0, x - GRID_CONFIG.sidebarWidth);
   const adjustedY = Math.max(0, y - GRID_CONFIG.headerHeight);
 
-  const colIndex = Math.floor(adjustedX / GRID_CONFIG.colWidth);
-  const rowIndex = Math.floor(adjustedY / GRID_CONFIG.rowHeight);
+  const globalColIndex = Math.floor(adjustedX / GRID_CONFIG.colWidth);
+  const routeIndex = Math.floor(adjustedY / GRID_CONFIG.rowHeight);
 
-  const clampedCol = Math.max(0, Math.min(colIndex, DAYS.length - 1));
-  const clampedRow = Math.max(0, Math.min(rowIndex, TIMES.length - 1));
+  const dayIndex = Math.floor(globalColIndex / 4);
+  const timeIndex = globalColIndex % 4;
+
+  const clampedDay = Math.max(0, Math.min(dayIndex, DAYS.length - 1));
+  const clampedTime = Math.max(0, Math.min(timeIndex, TIMES.length - 1));
+  const clampedRoute = Math.max(0, Math.min(routeIndex, ROUTES.length - 1));
 
   return {
-    day: DAYS[clampedCol],
-    time: TIMES[clampedRow],
+    day: DAYS[clampedDay],
+    time: TIMES[clampedTime],
+    route: ROUTES[clampedRoute],
   };
 }
 
@@ -44,6 +66,8 @@ export function validateNode(
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const dayIndex = DAYS.indexOf(node.gridPosition.day);
+  const timeIndex = TIMES.indexOf(node.gridPosition.time);
+  const globalTimeIndex = dayIndex * 4 + timeIndex;
 
   if (!node.scenarioId || node.scenarioId.trim() === "") {
     issues.push({
@@ -76,22 +100,15 @@ export function validateNode(
     }
 
     const targetDayIndex = DAYS.indexOf(targetNode.gridPosition.day);
-    if (targetDayIndex < dayIndex) {
+    const targetTimeIndex = TIMES.indexOf(targetNode.gridPosition.time);
+    const targetGlobalTimeIndex = targetDayIndex * 4 + targetTimeIndex;
+
+    if (targetGlobalTimeIndex < globalTimeIndex) {
       issues.push({
         nodeId: node.id,
         type: "error",
-        message: `Cannot connect to earlier day: ${nextId}`,
+        message: `Time paradox: connects to past (${nextId})`,
       });
-    } else if (targetDayIndex === dayIndex) {
-      const timeIndex = TIMES.indexOf(node.gridPosition.time);
-      const targetTimeIndex = TIMES.indexOf(targetNode.gridPosition.time);
-      if (targetTimeIndex <= timeIndex) {
-        issues.push({
-          nodeId: node.id,
-          type: "warning",
-          message: `Time progression warning: ${nextId}`,
-        });
-      }
     }
   });
 

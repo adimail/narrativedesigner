@@ -5,6 +5,7 @@ import {
   ScenarioNode,
   DayEnum,
   TimeEnum,
+  RouteEnum,
   ValidationIssue,
 } from "../types/schema";
 import { validateNode } from "../lib/utils";
@@ -16,10 +17,16 @@ interface StoreState {
   scale: number;
   isPropertiesPanelOpen: boolean;
   isValidationPanelOpen: boolean;
+  darkMode: boolean;
 
-  addNode: (day: DayEnum, time: TimeEnum) => void;
+  addNode: (day: DayEnum, time: TimeEnum, route: RouteEnum) => void;
   updateNode: (id: string, data: Partial<ScenarioNode>) => void;
-  moveNode: (id: string, day: DayEnum, time: TimeEnum) => void;
+  moveNode: (
+    id: string,
+    day: DayEnum,
+    time: TimeEnum,
+    route: RouteEnum,
+  ) => void;
   deleteNode: (id: string) => void;
   selectNode: (id: string, multi: boolean) => void;
   clearSelection: () => void;
@@ -31,6 +38,7 @@ interface StoreState {
   setScale: (scale: number) => void;
   togglePropertiesPanel: () => void;
   toggleValidationPanel: () => void;
+  toggleDarkMode: () => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -42,12 +50,29 @@ export const useStore = create<StoreState>()(
       scale: 1,
       isPropertiesPanelOpen: true,
       isValidationPanelOpen: true,
+      darkMode: false,
 
-      addNode: (day, time) => {
+      addNode: (day, time, route) => {
+        const { nodes } = get();
+
+        // Generate ID based on convention: D{Day}_R{Route}_Sc{Index}
+        const dayNum = day.replace("Day", "").padStart(2, "0");
+        const routePrefix = route;
+
+        // Find existing nodes in this route/day to increment index
+        const existingInRoute = nodes.filter(
+          (n) => n.gridPosition.day === day && n.gridPosition.route === route,
+        );
+        const nextIndex = (existingInRoute.length + 1)
+          .toString()
+          .padStart(3, "0");
+
+        const scenarioId = `D${dayNum}_R${routePrefix}_Sc${nextIndex}`;
+
         const newNode: ScenarioNode = {
           id: uuidv4(),
-          scenarioId: `D${day.replace("Day", "").padStart(2, "0")}_RCommon_Sc${Math.floor(Math.random() * 999)}`,
-          gridPosition: { day, time },
+          scenarioId,
+          gridPosition: { day, time, route },
           loadInfo: {
             immediately: true,
             afterScenario: "None",
@@ -69,7 +94,6 @@ export const useStore = create<StoreState>()(
         const { nodes } = get();
         const nodeToUpdate = nodes.find((n) => n.id === id);
 
-        // If node doesn't exist, or we aren't changing the scenarioId, or the new ID is the same
         if (
           !nodeToUpdate ||
           !data.scenarioId ||
@@ -81,18 +105,14 @@ export const useStore = create<StoreState>()(
             ),
           }));
         } else {
-          // Handle renaming: update references in all other nodes
           const oldId = nodeToUpdate.scenarioId;
           const newId = data.scenarioId;
 
           set((state) => ({
             nodes: state.nodes.map((n) => {
-              // Update the target node itself
               if (n.id === id) {
                 return { ...n, ...data };
               }
-
-              // Update references in other nodes
               return {
                 ...n,
                 nextScenarios: n.nextScenarios.map((sid) =>
@@ -122,13 +142,13 @@ export const useStore = create<StoreState>()(
         get().validateAll();
       },
 
-      moveNode: (id, day, time) => {
+      moveNode: (id, day, time, route) => {
         set((state) => ({
           nodes: state.nodes.map((n) => {
             if (n.id !== id) return n;
             return {
               ...n,
-              gridPosition: { day, time },
+              gridPosition: { day, time, route },
               loadInfo: { ...n.loadInfo, atDay: day, atTime: time },
             };
           }),
@@ -142,7 +162,6 @@ export const useStore = create<StoreState>()(
 
         set((state) => {
           const remainingNodes = state.nodes.filter((n) => n.id !== id);
-
           const cleanedNodes = remainingNodes.map((n) => ({
             ...n,
             nextScenarios: n.nextScenarios.filter(
@@ -253,7 +272,7 @@ export const useStore = create<StoreState>()(
           {
             id: node1Id,
             scenarioId: "D01_RCommon_Sc001",
-            gridPosition: { day: "Day1", time: "Morning" },
+            gridPosition: { day: "Day1", time: "Morning", route: "Common" },
             loadInfo: {
               immediately: true,
               afterScenario: "None",
@@ -267,7 +286,7 @@ export const useStore = create<StoreState>()(
           {
             id: node2Id,
             scenarioId: "D01_RCommon_Sc002",
-            gridPosition: { day: "Day1", time: "Afternoon" },
+            gridPosition: { day: "Day1", time: "Afternoon", route: "Common" },
             loadInfo: {
               immediately: false,
               afterScenario: "D01_RCommon_Sc001",
@@ -275,13 +294,13 @@ export const useStore = create<StoreState>()(
               atTime: "Afternoon",
             },
             endInfo: { immediately: true, afterScenario: "None" },
-            nextScenarios: ["D02_RCommon_Sc001"],
+            nextScenarios: ["D02_RAlyssa_Sc001"],
             previousScenarios: ["D01_RCommon_Sc001"],
           },
           {
             id: node3Id,
-            scenarioId: "D02_RCommon_Sc001",
-            gridPosition: { day: "Day2", time: "Morning" },
+            scenarioId: "D02_RAlyssa_Sc001",
+            gridPosition: { day: "Day2", time: "Morning", route: "Alyssa" },
             loadInfo: {
               immediately: false,
               afterScenario: "D01_RCommon_Sc002",
@@ -311,6 +330,7 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           isValidationPanelOpen: !state.isValidationPanelOpen,
         })),
+      toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
     }),
     {
       name: "scenariograph-storage",

@@ -14,10 +14,18 @@ export const PropertiesPanel = () => {
   const disconnectNodes = useStore((state) => state.disconnectNodes);
   const isOpen = useStore((state) => state.isPropertiesPanelOpen);
   const toggleOpen = useStore((state) => state.togglePropertiesPanel);
+  const darkMode = useStore((state) => state.darkMode);
 
   if (!isOpen) {
     return (
-      <div className="w-12 border-l-4 border-black bg-gray-100 flex flex-col items-center py-4">
+      <div
+        className={cn(
+          "w-12 border-l-4 flex flex-col items-center py-4",
+          darkMode
+            ? "bg-slate-800 border-slate-600 text-white"
+            : "bg-gray-100 border-black text-black",
+        )}
+      >
         <Button variant="ghost" size="icon" onClick={toggleOpen}>
           <ChevronLeft className="w-6 h-6" />
         </Button>
@@ -64,11 +72,24 @@ export const PropertiesPanel = () => {
             onChange={(e) =>
               updateNode(node.id, { scenarioId: e.target.value })
             }
+            className={
+              darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
+            }
           />
         </div>
 
-        <div className="space-y-4 border-t-2 border-black border-dashed pt-4">
-          <h3 className="font-bold text-sm bg-black text-white inline-block px-2">
+        <div
+          className={cn(
+            "space-y-4 border-t-2 border-dashed pt-4",
+            darkMode ? "border-slate-600" : "border-black",
+          )}
+        >
+          <h3
+            className={cn(
+              "font-bold text-sm inline-block px-2",
+              darkMode ? "bg-slate-600 text-white" : "bg-black text-white",
+            )}
+          >
             LOAD_CONFIG
           </h3>
 
@@ -76,7 +97,12 @@ export const PropertiesPanel = () => {
             <input
               type="checkbox"
               id="loadImmediate"
-              className="w-5 h-5 border-2 border-black rounded-none focus:ring-0 text-black"
+              className={cn(
+                "w-5 h-5 border-2 rounded-none focus:ring-0",
+                darkMode
+                  ? "border-slate-400 bg-slate-700"
+                  : "border-black text-black",
+              )}
               checked={node.loadInfo.immediately}
               onChange={(e) =>
                 updateNode(node.id, {
@@ -104,6 +130,9 @@ export const PropertiesPanel = () => {
                     },
                   })
                 }
+                className={
+                  darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
+                }
               >
                 <option value="None">None</option>
                 {availableScenarios.map((id) => (
@@ -121,7 +150,12 @@ export const PropertiesPanel = () => {
               <Select
                 disabled
                 value={node.loadInfo.atDay}
-                className="bg-gray-100 opacity-70"
+                className={cn(
+                  "opacity-70",
+                  darkMode
+                    ? "bg-slate-700 border-slate-500 text-white"
+                    : "bg-gray-100",
+                )}
               >
                 {DAYS.map((d) => (
                   <option key={d} value={d}>
@@ -135,7 +169,12 @@ export const PropertiesPanel = () => {
               <Select
                 disabled
                 value={node.loadInfo.atTime}
-                className="bg-gray-100 opacity-70"
+                className={cn(
+                  "opacity-70",
+                  darkMode
+                    ? "bg-slate-700 border-slate-500 text-white"
+                    : "bg-gray-100",
+                )}
               >
                 {TIMES.map((t) => (
                   <option key={t} value={t}>
@@ -147,8 +186,18 @@ export const PropertiesPanel = () => {
           </div>
         </div>
 
-        <div className="space-y-4 border-t-2 border-black border-dashed pt-4">
-          <h3 className="font-bold text-sm bg-black text-white inline-block px-2">
+        <div
+          className={cn(
+            "space-y-4 border-t-2 border-dashed pt-4",
+            darkMode ? "border-slate-600" : "border-black",
+          )}
+        >
+          <h3
+            className={cn(
+              "font-bold text-sm inline-block px-2",
+              darkMode ? "bg-slate-600 text-white" : "bg-black text-white",
+            )}
+          >
             END_CONFIG
           </h3>
 
@@ -156,7 +205,12 @@ export const PropertiesPanel = () => {
             <input
               type="checkbox"
               id="endImmediate"
-              className="w-5 h-5 border-2 border-black rounded-none focus:ring-0 text-black"
+              className={cn(
+                "w-5 h-5 border-2 rounded-none focus:ring-0",
+                darkMode
+                  ? "border-slate-400 bg-slate-700"
+                  : "border-black text-black",
+              )}
               checked={node.endInfo.immediately}
               onChange={(e) =>
                 updateNode(node.id, {
@@ -181,6 +235,9 @@ export const PropertiesPanel = () => {
                     endInfo: { ...node.endInfo, afterScenario: e.target.value },
                   })
                 }
+                className={
+                  darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
+                }
               >
                 <option value="None">None</option>
                 {availableScenarios.map((id) => (
@@ -193,8 +250,18 @@ export const PropertiesPanel = () => {
           )}
         </div>
 
-        <div className="space-y-4 border-t-2 border-black border-dashed pt-4">
-          <h3 className="font-bold text-sm bg-black text-white inline-block px-2">
+        <div
+          className={cn(
+            "space-y-4 border-t-2 border-dashed pt-4",
+            darkMode ? "border-slate-600" : "border-black",
+          )}
+        >
+          <h3
+            className={cn(
+              "font-bold text-sm inline-block px-2",
+              darkMode ? "bg-slate-600 text-white" : "bg-black text-white",
+            )}
+          >
             LINKS
           </h3>
           <div className="space-y-2">
@@ -206,14 +273,19 @@ export const PropertiesPanel = () => {
               return (
                 <div
                   key={targetId}
-                  className="flex items-center justify-between text-xs border-2 border-black p-2 bg-white shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]"
+                  className={cn(
+                    "flex items-center justify-between text-xs border-2 p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]",
+                    darkMode
+                      ? "border-slate-500 bg-slate-700"
+                      : "border-black bg-white",
+                  )}
                 >
                   <span className="truncate flex-1 font-bold">{targetId}</span>
                   <button
                     onClick={() =>
                       targetNode && disconnectNodes(node.id, targetNode.id)
                     }
-                    className="text-red-500 hover:text-red-700 ml-2 hover:bg-red-100 p-1"
+                    className="text-red-500 hover:text-red-700 ml-2 hover:bg-red-100 p-1 rounded"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -237,8 +309,22 @@ export const PropertiesPanel = () => {
   };
 
   return (
-    <div className="w-80 border-l-4 border-black bg-white flex flex-col h-full overflow-y-auto transition-all">
-      <div className="p-2 border-b-4 border-black flex items-center justify-between bg-gray-100">
+    <div
+      className={cn(
+        "w-80 border-l-4 flex flex-col h-full overflow-y-auto transition-all",
+        darkMode
+          ? "bg-slate-800 border-slate-600 text-white"
+          : "bg-white border-black text-black",
+      )}
+    >
+      <div
+        className={cn(
+          "p-2 border-b-4 flex items-center justify-between",
+          darkMode
+            ? "border-slate-600 bg-slate-700"
+            : "border-black bg-gray-100",
+        )}
+      >
         <h2 className="font-bold text-lg font-mono pl-2">PROPERTIES</h2>
         <Button
           variant="ghost"

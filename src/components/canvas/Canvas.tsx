@@ -5,9 +5,10 @@ import { GridBackground } from "./GridBackground";
 import { ConnectionLayer } from "./ConnectionLayer";
 import { ScenarioNode } from "./ScenarioNode";
 import { getGridPositionFromCoordinates } from "../../lib/utils";
-import { GRID_CONFIG, DAYS } from "../../lib/constants";
+import { GRID_CONFIG, DAYS, ROUTES } from "../../lib/constants";
 import { Button } from "../ui/button";
 import { Play } from "lucide-react";
+import { cn } from "../../lib/utils";
 
 export const Canvas = () => {
   const nodes = useStore((state) => state.nodes);
@@ -18,6 +19,7 @@ export const Canvas = () => {
   const addNode = useStore((state) => state.addNode);
   const setScale = useStore((state) => state.setScale);
   const loadSampleData = useStore((state) => state.loadSampleData);
+  const darkMode = useStore((state) => state.darkMode);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [connectingSourceId, setConnectingSourceId] = useState<string | null>(
@@ -64,8 +66,8 @@ export const Canvas = () => {
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
 
-      const { day, time } = getGridPositionFromCoordinates(x, y);
-      moveNode(draggingId, day, time);
+      const { day, time, route } = getGridPositionFromCoordinates(x, y);
+      moveNode(draggingId, day, time, route);
     }
   };
 
@@ -102,28 +104,42 @@ export const Canvas = () => {
       const scale = useStore.getState().scale;
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
-      const { day, time } = getGridPositionFromCoordinates(x, y);
-      addNode(day, time);
+      const { day, time, route } = getGridPositionFromCoordinates(x, y);
+      addNode(day, time, route);
     }
   };
 
   const totalWidth =
-    GRID_CONFIG.sidebarWidth + DAYS.length * GRID_CONFIG.colWidth;
-  const totalHeight = GRID_CONFIG.headerHeight + 4 * GRID_CONFIG.rowHeight;
+    GRID_CONFIG.sidebarWidth + DAYS.length * 4 * GRID_CONFIG.colWidth;
+  const totalHeight =
+    GRID_CONFIG.headerHeight + ROUTES.length * GRID_CONFIG.rowHeight;
 
   return (
     <div
-      className="absolute inset-0 overflow-hidden bg-gray-200"
+      className={cn(
+        "absolute inset-0 overflow-hidden transition-colors",
+        darkMode ? "bg-slate-900" : "bg-gray-200",
+      )}
       onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
     >
       {nodes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-sm">
-          <div className="pointer-events-auto max-w-md border border-slate-200 bg-white/90 p-8 text-center shadow-2xl backdrop-blur-sm">
-            <h2 className="mb-2 text-2xl font-bold text-slate-800">
-              ScenarioGraph
-            </h2>
-            <p className="mb-6 text-slate-600">
+          <div
+            className={cn(
+              "pointer-events-auto max-w-md border p-8 text-center shadow-2xl backdrop-blur-sm",
+              darkMode
+                ? "bg-slate-800/90 border-slate-600 text-white"
+                : "bg-white/90 border-slate-200 text-slate-800",
+            )}
+          >
+            <h2 className="mb-2 text-2xl font-bold">ScenarioGraph</h2>
+            <p
+              className={cn(
+                "mb-6",
+                darkMode ? "text-slate-300" : "text-slate-600",
+              )}
+            >
               Start by right-clicking on the grid to add a node, or load sample
               data to see how it works.
             </p>
@@ -151,7 +167,10 @@ export const Canvas = () => {
         >
           <div
             ref={wrapperRef}
-            className="relative bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]"
+            className={cn(
+              "relative shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]",
+              darkMode ? "bg-slate-900" : "bg-white",
+            )}
             style={{ width: totalWidth, height: totalHeight }}
             onClick={handleCanvasClick}
             onContextMenu={handleContextMenu}
@@ -166,7 +185,7 @@ export const Canvas = () => {
                   y1={tempLine.y1}
                   x2={tempLine.x2}
                   y2={tempLine.y2}
-                  stroke="#000000"
+                  stroke={darkMode ? "#ffffff" : "#000000"}
                   strokeWidth="2"
                   strokeDasharray="5,5"
                 />

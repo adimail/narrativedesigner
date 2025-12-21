@@ -30,6 +30,8 @@ export type DayEnum =
 
 export type TimeEnum = "Morning" | "Afternoon" | "Evening" | "Night";
 
+export type RouteEnum = "Common" | "Alyssa" | "Rhea" | "Natalie" | "OtherQuest";
+
 export interface LoadInfo {
   immediately: boolean;
   afterScenario: string;
@@ -40,8 +42,6 @@ export interface LoadInfo {
 export interface EndInfo {
   immediately: boolean;
   afterScenario: string;
-  atDay?: DayEnum;
-  atTime?: TimeEnum;
 }
 
 export interface ScenarioNode {
@@ -50,6 +50,7 @@ export interface ScenarioNode {
   gridPosition: {
     day: DayEnum;
     time: TimeEnum;
+    route: RouteEnum;
   };
   loadInfo: LoadInfo;
   endInfo: EndInfo;
@@ -61,10 +62,4 @@ export interface ValidationIssue {
   nodeId: string;
   type: "error" | "warning";
   message: string;
-}
-
-export interface Connection {
-  id: string;
-  sourceNodeId: string;
-  targetNodeId: string;
 }
