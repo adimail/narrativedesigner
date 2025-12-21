@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from "react";
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { useStore } from "../../store/useStore";
 import { GridBackground } from "./GridBackground";
@@ -39,6 +39,27 @@ export const Canvas = () => {
 
   const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (
+          document.activeElement instanceof HTMLInputElement ||
+          document.activeElement instanceof HTMLTextAreaElement
+        ) {
+          return;
+        }
+
+        const state = useStore.getState();
+        if (state.selectedNodeIds.length > 0) {
+          state.selectedNodeIds.forEach((id) => state.deleteNode(id));
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (e.button === 0) {
@@ -48,6 +69,20 @@ export const Canvas = () => {
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
+    if (e.shiftKey && wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const scale = useStore.getState().scale;
+      const x = (e.clientX - rect.left) / scale;
+      const y = (e.clientY - rect.top) / scale;
+      const { day, time, route } = getGridPositionFromCoordinates(
+        x,
+        y,
+        layoutMap,
+      );
+      addNode(day, time, route);
+      return;
+    }
+
     if (e.target === e.currentTarget) {
       clearSelection();
     }
@@ -121,18 +156,6 @@ export const Canvas = () => {
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (wrapperRef.current) {
-      const rect = wrapperRef.current.getBoundingClientRect();
-      const scale = useStore.getState().scale;
-      const x = (e.clientX - rect.left) / scale;
-      const y = (e.clientY - rect.top) / scale;
-      const { day, time, route } = getGridPositionFromCoordinates(
-        x,
-        y,
-        layoutMap,
-      );
-      addNode(day, time, route);
-    }
   };
 
   const totalWidth = layoutMap.totalWidth;
@@ -165,8 +188,8 @@ export const Canvas = () => {
                 darkMode ? "text-slate-300" : "text-slate-600",
               )}
             >
-              Start by right-clicking on the grid to add a node, or load sample
-              data to see how it works.
+              Shift+Click on the grid to add a node, or load sample data to see
+              how it works.
             </p>
             <Button onClick={loadSampleData} size="default" className="w-full">
               <Play className="mr-2 h-4 w-4 py-6 text-black" />

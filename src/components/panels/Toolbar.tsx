@@ -1,19 +1,51 @@
-import { Download, Upload, Moon, Sun, Trash2 } from "lucide-react";
+import { Download, Upload, Moon, Sun, Trash2, Save } from "lucide-react";
 import { Button } from "../ui/button";
 import { useStore } from "../../store/useStore";
 import { ScenarioNode } from "../../types/schema";
 import { cn } from "../../lib/utils";
-import { v4 as uuidv4 } from "uuid";
 
 export const Toolbar = () => {
   const nodes = useStore((state) => state.nodes);
-  const importData = useStore((state) => state.importData);
+  const loadProject = useStore((state) => state.loadProject);
   const validateAll = useStore((state) => state.validateAll);
   const darkMode = useStore((state) => state.darkMode);
   const toggleDarkMode = useStore((state) => state.toggleDarkMode);
   const clearAll = useStore((state) => state.clearAll);
 
-  const handleExport = () => {
+  const handleSaveProject = () => {
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(nodes, null, 2));
+    const downloadAnchorNode = document.createElement("a");
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "project.json");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (Array.isArray(json)) {
+          loadProject(json as ScenarioNode[]);
+        } else {
+          alert("Invalid Project JSON format");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Error parsing JSON");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportGame = () => {
     validateAll();
 
     const exportData = nodes.map((node) => ({
@@ -41,82 +73,10 @@ export const Toolbar = () => {
       encodeURIComponent(JSON.stringify(exportData, null, 2));
     const downloadAnchorNode = document.createElement("a");
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "scenarios.json");
+    downloadAnchorNode.setAttribute("download", "scenarios_export.json");
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-
-        if (Array.isArray(json)) {
-          if (json.length > 0 && "ScenarioInfo" in json[0]) {
-            const mappedNodes: ScenarioNode[] = json.map((item: any) => ({
-              id: uuidv4(),
-              scenarioId: item.ScenarioInfo.CurrentScenario,
-              sortIndex: 0,
-              gridPosition: {
-                day: item.LoadInfo.AtDay,
-                time: item.LoadInfo.AtTime,
-                route: "Common",
-              },
-              loadInfo: {
-                immediately: item.LoadInfo.Immediately,
-                afterScenario: item.LoadInfo.AfterScenario,
-                atDay: item.LoadInfo.AtDay,
-                atTime: item.LoadInfo.AtTime,
-              },
-              endInfo: {
-                immediately: item.EndInfo.Immediately,
-                afterScenario: item.EndInfo.AfterScenario,
-                atDay: item.EndInfo.AtDay,
-                atTime: item.EndInfo.AtTime,
-              },
-              nextScenarios: item.ScenarioInfo.NextScenarios,
-              previousScenarios: item.ScenarioInfo.PreviousScenarios,
-            }));
-
-            mappedNodes.forEach((n) => {
-              if (n.scenarioId.includes("_R")) {
-                const parts = n.scenarioId.split("_");
-                const routePart = parts.find((p) => p.startsWith("R"));
-                if (routePart) {
-                  const routeName = routePart.substring(1);
-                  if (
-                    [
-                      "Common",
-                      "Alyssa",
-                      "Rhea",
-                      "Natalie",
-                      "OtherQuest",
-                    ].includes(routeName)
-                  ) {
-                    n.gridPosition.route = routeName as any;
-                  }
-                }
-              }
-            });
-
-            importData(mappedNodes);
-          } else {
-            importData(json as ScenarioNode[]);
-          }
-        } else {
-          alert("Invalid JSON format");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Error parsing JSON");
-      }
-    };
-    reader.readAsText(file);
   };
 
   const handleClear = () => {
@@ -166,9 +126,9 @@ export const Toolbar = () => {
 
         <div className="h-8 w-px bg-gray-300 mx-2" />
 
-        <Button variant="destructive" size="sm" onClick={handleClear}>
-          <Trash2 className="w-4 h-4 mr-2" />
-          CLEAR_ALL
+        <Button variant="default" size="sm" onClick={handleSaveProject}>
+          <Save className="w-4 h-4 mr-2" />
+          SAVE
         </Button>
 
         <div className="relative">
@@ -176,17 +136,22 @@ export const Toolbar = () => {
             type="file"
             accept=".json"
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            onChange={handleImport}
+            onChange={handleLoadProject}
           />
           <Button variant="default" size="sm">
             <Upload className="w-4 h-4 mr-2" />
-            LOAD_DISK
+            LOAD
           </Button>
         </div>
 
-        <Button variant="default" size="sm" onClick={handleExport}>
+        <Button variant="default" size="sm" onClick={handleExportGame}>
           <Download className="w-4 h-4 mr-2" />
-          SAVE_DISK
+          EXPORT
+        </Button>
+
+        <Button variant="destructive" size="sm" onClick={handleClear}>
+          <Trash2 className="w-4 h-4 mr-2" />
+          CLEAR
         </Button>
       </div>
     </div>

@@ -78,6 +78,25 @@ export const PropertiesPanel = () => {
           />
         </div>
 
+        <div className="space-y-2">
+          <label className="text-xs font-bold uppercase">
+            Description (Internal)
+          </label>
+          <textarea
+            className={cn(
+              "flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+              darkMode
+                ? "bg-slate-700 border-slate-500 text-white"
+                : "bg-white",
+            )}
+            rows={4}
+            value={node.description || ""}
+            onChange={(e) =>
+              updateNode(node.id, { description: e.target.value })
+            }
+          />
+        </div>
+
         {/* LOAD CONFIG */}
         <div
           className={cn(
@@ -251,7 +270,6 @@ export const PropertiesPanel = () => {
             </div>
           )}
 
-          {/* Added Day/Time selectors for EndInfo */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs font-bold uppercase">At Day</label>

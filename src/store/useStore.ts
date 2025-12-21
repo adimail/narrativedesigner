@@ -35,6 +35,7 @@ interface StoreState {
   disconnectNodes: (sourceId: string, targetId: string) => void;
   validateAll: () => void;
   importData: (data: ScenarioNode[]) => void;
+  loadProject: (nodes: ScenarioNode[]) => void;
   loadSampleData: () => void;
   clearAll: () => void;
   setScale: (scale: number) => void;
@@ -79,6 +80,7 @@ export const useStore = create<StoreState>()(
           id: uuidv4(),
           scenarioId,
           sortIndex: maxSortIndex + 1,
+          description: "",
           gridPosition: { day, time, route },
           loadInfo: {
             immediately: true,
@@ -378,6 +380,7 @@ export const useStore = create<StoreState>()(
             patchedData.push({
               ...n,
               sortIndex: idx,
+              description: n.description || "",
               endInfo: {
                 ...n.endInfo,
                 atDay: n.endInfo.atDay || n.gridPosition.day,
@@ -391,6 +394,11 @@ export const useStore = create<StoreState>()(
         get().validateAll();
       },
 
+      loadProject: (nodes) => {
+        set({ nodes, selectedNodeIds: [], validationIssues: [] });
+        get().validateAll();
+      },
+
       loadSampleData: () => {
         const node1Id = uuidv4();
         const node2Id = uuidv4();
@@ -401,6 +409,7 @@ export const useStore = create<StoreState>()(
             id: node1Id,
             scenarioId: "D01_RCommon_Sc001",
             sortIndex: 0,
+            description: "Start of the game",
             gridPosition: { day: "Day1", time: "Morning", route: "Common" },
             loadInfo: {
               immediately: true,
@@ -421,6 +430,7 @@ export const useStore = create<StoreState>()(
             id: node2Id,
             scenarioId: "D01_RCommon_Sc002",
             sortIndex: 0,
+            description: "Second scene",
             gridPosition: { day: "Day1", time: "Afternoon", route: "Common" },
             loadInfo: {
               immediately: false,
@@ -441,6 +451,7 @@ export const useStore = create<StoreState>()(
             id: node3Id,
             scenarioId: "D02_RAlyssa_Sc001",
             sortIndex: 0,
+            description: "Alyssa route start",
             gridPosition: { day: "Day2", time: "Morning", route: "Alyssa" },
             loadInfo: {
               immediately: false,
