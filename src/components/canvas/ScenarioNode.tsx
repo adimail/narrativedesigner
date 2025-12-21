@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ScenarioNode as NodeType } from "../../types/schema";
-import { getCoordinates } from "../../lib/utils";
+import { getCoordinates, getRouteLayout } from "../../lib/utils";
 import { GRID_CONFIG } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
@@ -39,17 +39,21 @@ export const ScenarioNode = ({
   siblings.sort((a, b) => a.id.localeCompare(b.id));
   const stackIndex = siblings.findIndex((n) => n.id === node.id);
 
+  // Get dynamic layout
+  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
+
   const coords = getCoordinates(
     node.gridPosition.day,
     node.gridPosition.time,
     node.gridPosition.route,
     stackIndex,
+    layoutMap,
   );
 
   return (
     <div
       className={cn(
-        "absolute cursor-grab active:cursor-grabbing select-none flex flex-col border-2 transition-none group font-mono rounded-md",
+        "absolute cursor-grab active:cursor-grabbing select-none flex flex-col border-2 transition-all duration-300 ease-in-out group font-mono rounded-md",
         darkMode
           ? "bg-slate-700 border-slate-400 text-white"
           : "bg-[#ff99aa] border-black text-black",
@@ -64,9 +68,9 @@ export const ScenarioNode = ({
       )}
       style={{
         left: coords.x + 10,
-        top: coords.y + 10,
+        top: coords.y,
         width: GRID_CONFIG.colWidth - 20,
-        height: 80, // Fixed height for nodes, allowing stacking
+        height: GRID_CONFIG.nodeHeight,
       }}
       onMouseDown={(e) => onMouseDown(e, node.id)}
       onMouseUp={(e) => onConnectEnd(e, node.id)}

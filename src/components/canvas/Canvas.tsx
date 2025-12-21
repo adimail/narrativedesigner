@@ -1,10 +1,13 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useMemo } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { useStore } from "../../store/useStore";
 import { GridBackground } from "./GridBackground";
 import { ConnectionLayer } from "./ConnectionLayer";
 import { ScenarioNode } from "./ScenarioNode";
-import { getGridPositionFromCoordinates } from "../../lib/utils";
+import {
+  getGridPositionFromCoordinates,
+  getRouteLayout,
+} from "../../lib/utils";
 import { GRID_CONFIG, DAYS, ROUTES } from "../../lib/constants";
 import { Button } from "../ui/button";
 import { Play } from "lucide-react";
@@ -33,6 +36,9 @@ export const Canvas = () => {
   } | null>(null);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Calculate dynamic layout for hit testing
+  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -66,7 +72,12 @@ export const Canvas = () => {
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
 
-      const { day, time, route } = getGridPositionFromCoordinates(x, y);
+      // Pass layoutMap to handle dynamic row heights
+      const { day, time, route } = getGridPositionFromCoordinates(
+        x,
+        y,
+        layoutMap,
+      );
       moveNode(draggingId, day, time, route);
     }
   };
@@ -104,15 +115,18 @@ export const Canvas = () => {
       const scale = useStore.getState().scale;
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
-      const { day, time, route } = getGridPositionFromCoordinates(x, y);
+      const { day, time, route } = getGridPositionFromCoordinates(
+        x,
+        y,
+        layoutMap,
+      );
       addNode(day, time, route);
     }
   };
 
   const totalWidth =
     GRID_CONFIG.sidebarWidth + DAYS.length * 4 * GRID_CONFIG.colWidth;
-  const totalHeight =
-    GRID_CONFIG.headerHeight + ROUTES.length * GRID_CONFIG.rowHeight;
+  const totalHeight = layoutMap.totalHeight;
 
   return (
     <div
@@ -168,7 +182,7 @@ export const Canvas = () => {
           <div
             ref={wrapperRef}
             className={cn(
-              "relative shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)]",
+              "relative shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] transition-all duration-300 ease-in-out",
               darkMode ? "bg-slate-900" : "bg-white",
             )}
             style={{ width: totalWidth, height: totalHeight }}

@@ -1,6 +1,7 @@
 import { useStore } from "../../store/useStore";
-import { getCoordinates } from "../../lib/utils";
+import { getCoordinates, getRouteLayout } from "../../lib/utils";
 import { GRID_CONFIG, COLORS } from "../../lib/constants";
+import { useMemo } from "react";
 
 export const ConnectionLayer = () => {
   const nodes = useStore((state) => state.nodes);
@@ -25,29 +26,19 @@ export const ConnectionLayer = () => {
         n.gridPosition.time === node.gridPosition.time &&
         n.gridPosition.route === node.gridPosition.route,
     );
-    // Sort by ID to ensure consistent order
     siblings.sort((a, b) => a.id.localeCompare(b.id));
     return siblings.findIndex((n) => n.id === node.id);
   };
 
+  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
+
   const totalCols = 28 * 4;
   const width = GRID_CONFIG.sidebarWidth + totalCols * GRID_CONFIG.colWidth;
-  const height = GRID_CONFIG.headerHeight + 5 * GRID_CONFIG.rowHeight;
-
-  const handleLinkClick = (
-    e: React.MouseEvent,
-    sourceId: string,
-    targetId: string,
-  ) => {
-    if (e.ctrlKey) {
-      e.stopPropagation();
-      disconnectNodes(sourceId, targetId);
-    }
-  };
+  const height = layoutMap.totalHeight;
 
   return (
     <svg
-      className="absolute top-0 left-0 pointer-events-none z-0"
+      className="absolute top-0 left-0 pointer-events-none z-0 transition-all duration-300 ease-in-out"
       style={{ width, height }}
     >
       {connections.map((conn, idx) => {
@@ -61,18 +52,20 @@ export const ConnectionLayer = () => {
           conn.source.gridPosition.time,
           conn.source.gridPosition.route,
           sourceStack,
+          layoutMap,
         );
         const end = getCoordinates(
           conn.target.gridPosition.day,
           conn.target.gridPosition.time,
           conn.target.gridPosition.route,
           targetStack,
+          layoutMap,
         );
 
         const startX = start.x + GRID_CONFIG.colWidth - 20;
-        const startY = start.y + 40; // Approximate vertical center of node content
+        const startY = start.y + GRID_CONFIG.nodeHeight / 2;
         const endX = end.x + 20;
-        const endY = end.y + 40;
+        const endY = end.y + GRID_CONFIG.nodeHeight / 2;
 
         const controlPointOffset = Math.abs(endX - startX) * 0.5;
         const path = `M ${startX} ${startY} C ${startX + controlPointOffset} ${startY}, ${endX - controlPointOffset} ${endY}, ${endX} ${endY}`;

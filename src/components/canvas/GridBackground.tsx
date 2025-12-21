@@ -1,14 +1,18 @@
 import { DAYS, TIMES, ROUTES, GRID_CONFIG, COLORS } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
-import { cn } from "../../lib/utils";
+import { cn, getRouteLayout } from "../../lib/utils";
+import { useMemo } from "react";
 
 export const GridBackground = () => {
   const darkMode = useStore((state) => state.darkMode);
+  const nodes = useStore((state) => state.nodes);
+
+  // Calculate dynamic layout
+  const layoutMap = useMemo(() => getRouteLayout(nodes), [nodes]);
 
   const totalCols = DAYS.length * 4;
   const width = GRID_CONFIG.sidebarWidth + totalCols * GRID_CONFIG.colWidth;
-  const height =
-    GRID_CONFIG.headerHeight + ROUTES.length * GRID_CONFIG.rowHeight;
+  const height = layoutMap.totalHeight;
 
   return (
     <div
@@ -19,19 +23,22 @@ export const GridBackground = () => {
       style={{ width, height }}
     >
       {/* Route Rows (Background) */}
-      {ROUTES.map((route, r) => (
-        <div
-          key={route}
-          className={cn(
-            "absolute w-full border-b",
-            darkMode ? "border-slate-700" : "border-gray-200",
-          )}
-          style={{
-            top: GRID_CONFIG.headerHeight + r * GRID_CONFIG.rowHeight,
-            height: GRID_CONFIG.rowHeight,
-          }}
-        />
-      ))}
+      {ROUTES.map((route) => {
+        const routeLayout = layoutMap.routes[route];
+        return (
+          <div
+            key={route}
+            className={cn(
+              "absolute w-full border-b transition-all duration-300 ease-in-out",
+              darkMode ? "border-slate-700" : "border-gray-200",
+            )}
+            style={{
+              top: routeLayout.top,
+              height: routeLayout.height,
+            }}
+          />
+        );
+      })}
 
       {/* Time Columns (Background Colors) */}
       {DAYS.map((day, d) =>
@@ -46,9 +53,15 @@ export const GridBackground = () => {
                   GRID_CONFIG.sidebarWidth + globalCol * GRID_CONFIG.colWidth,
                 width: GRID_CONFIG.colWidth,
                 top: 0,
-                backgroundColor: darkMode ? undefined : COLORS.timeSlots[time],
+                // Use specific dark mode colors or light mode colors
+                backgroundColor: darkMode
+                  ? COLORS.timeSlotsDark[time]
+                  : COLORS.timeSlots[time],
                 borderColor: darkMode ? "#334155" : COLORS.gridLine,
-                opacity: darkMode ? 0.1 : 0.5,
+                // Adjust opacity:
+                // Light mode needs 0.5 to look pastel.
+                // Dark mode needs 0.4 to blend with the slate-900 background but remain distinct.
+                opacity: darkMode ? 0.4 : 0.5,
               }}
             />
           );
@@ -104,25 +117,28 @@ export const GridBackground = () => {
       )}
 
       {/* Route Sidebar */}
-      {ROUTES.map((route, i) => (
-        <div
-          key={route}
-          className={cn(
-            "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20",
-            darkMode
-              ? "bg-slate-800 text-white border-slate-600"
-              : "bg-gray-100 text-black border-black",
-          )}
-          style={{
-            left: 0,
-            top: GRID_CONFIG.headerHeight + i * GRID_CONFIG.rowHeight,
-            width: GRID_CONFIG.sidebarWidth,
-            height: GRID_CONFIG.rowHeight,
-          }}
-        >
-          {route}
-        </div>
-      ))}
+      {ROUTES.map((route) => {
+        const routeLayout = layoutMap.routes[route];
+        return (
+          <div
+            key={route}
+            className={cn(
+              "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20 transition-all duration-300 ease-in-out",
+              darkMode
+                ? "bg-slate-800 text-white border-slate-600"
+                : "bg-gray-100 text-black border-black",
+            )}
+            style={{
+              left: 0,
+              top: routeLayout.top,
+              width: GRID_CONFIG.sidebarWidth,
+              height: routeLayout.height,
+            }}
+          >
+            {route}
+          </div>
+        );
+      })}
 
       {/* Top-Left Corner */}
       <div
