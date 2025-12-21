@@ -26,6 +26,7 @@ interface StoreState {
     day: DayEnum,
     time: TimeEnum,
     route: RouteEnum,
+    targetIndex?: number,
   ) => void;
   deleteNode: (id: string) => void;
   selectNode: (id: string, multi: boolean) => void;
@@ -35,7 +36,7 @@ interface StoreState {
   validateAll: () => void;
   importData: (data: ScenarioNode[]) => void;
   loadSampleData: () => void;
-  clearAll: () => void; // New action
+  clearAll: () => void;
   setScale: (scale: number) => void;
   togglePropertiesPanel: () => void;
   toggleValidationPanel: () => void;
@@ -56,14 +57,18 @@ export const useStore = create<StoreState>()(
       addNode: (day, time, route) => {
         const { nodes } = get();
 
-        // Generate ID based on convention: D{Day}_R{Route}_Sc{Index}
         const dayNum = day.replace("Day", "").padStart(2, "0");
         const routePrefix = route;
 
-        // Find existing nodes in this route/day to increment index
         const existingInRoute = nodes.filter(
           (n) => n.gridPosition.day === day && n.gridPosition.route === route,
         );
+
+        const maxSortIndex = existingInRoute.reduce(
+          (max, n) => Math.max(max, n.sortIndex || 0),
+          -1,
+        );
+
         const nextIndex = (existingInRoute.length + 1)
           .toString()
           .padStart(3, "0");
@@ -73,6 +78,7 @@ export const useStore = create<StoreState>()(
         const newNode: ScenarioNode = {
           id: uuidv4(),
           scenarioId,
+          sortIndex: maxSortIndex + 1,
           gridPosition: { day, time, route },
           loadInfo: {
             immediately: true,
@@ -83,6 +89,8 @@ export const useStore = create<StoreState>()(
           endInfo: {
             immediately: true,
             afterScenario: "None",
+            atDay: day,
+            atTime: time,
           },
           nextScenarios: [],
           previousScenarios: [],
@@ -143,15 +151,83 @@ export const useStore = create<StoreState>()(
         get().validateAll();
       },
 
-      moveNode: (id, day, time, route) => {
+      moveNode: (id, day, time, route, targetIndex) => {
+        const { nodes } = get();
+        const nodeToMove = nodes.find((n) => n.id === id);
+        if (!nodeToMove) return;
+
+        const oldDay = nodeToMove.gridPosition.day;
+        const oldTime = nodeToMove.gridPosition.time;
+        const oldRoute = nodeToMove.gridPosition.route;
+
+        const isSameSlot =
+          oldDay === day && oldTime === time && oldRoute === route;
+
+        const targetSiblings = nodes
+          .filter(
+            (n) =>
+              n.id !== id &&
+              n.gridPosition.day === day &&
+              n.gridPosition.time === time &&
+              n.gridPosition.route === route,
+          )
+          .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
+
+        let finalIndex = targetIndex;
+        if (finalIndex === undefined || finalIndex < 0) {
+          finalIndex = targetSiblings.length;
+        }
+        finalIndex = Math.min(finalIndex, targetSiblings.length);
+
+        const newTargetOrder = [
+          ...targetSiblings.slice(0, finalIndex),
+          {
+            ...nodeToMove,
+            gridPosition: { day, time, route },
+            loadInfo: { ...nodeToMove.loadInfo, atDay: day, atTime: time },
+          },
+          ...targetSiblings.slice(finalIndex),
+        ];
+
+        let newSourceOrder: ScenarioNode[] = [];
+        if (!isSameSlot) {
+          newSourceOrder = nodes
+            .filter(
+              (n) =>
+                n.id !== id &&
+                n.gridPosition.day === oldDay &&
+                n.gridPosition.time === oldTime &&
+                n.gridPosition.route === oldRoute,
+            )
+            .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
+        }
+
         set((state) => ({
           nodes: state.nodes.map((n) => {
-            if (n.id !== id) return n;
-            return {
-              ...n,
-              gridPosition: { day, time, route },
-              loadInfo: { ...n.loadInfo, atDay: day, atTime: time },
-            };
+            const targetIdx = newTargetOrder.findIndex((x) => x.id === n.id);
+            if (targetIdx !== -1) {
+              return {
+                ...n,
+                sortIndex: targetIdx,
+                gridPosition: { day, time, route },
+                loadInfo:
+                  n.id === id
+                    ? { ...n.loadInfo, atDay: day, atTime: time }
+                    : n.loadInfo,
+              };
+            }
+
+            if (!isSameSlot) {
+              const sourceIdx = newSourceOrder.findIndex((x) => x.id === n.id);
+              if (sourceIdx !== -1) {
+                return {
+                  ...n,
+                  sortIndex: sourceIdx,
+                };
+              }
+            }
+
+            return n;
           }),
         }));
         get().validateAll();
@@ -161,17 +237,44 @@ export const useStore = create<StoreState>()(
         const nodeToDelete = get().nodes.find((n) => n.id === id);
         if (!nodeToDelete) return;
 
+        const { day, time, route } = nodeToDelete.gridPosition;
+
         set((state) => {
           const remainingNodes = state.nodes.filter((n) => n.id !== id);
-          const cleanedNodes = remainingNodes.map((n) => ({
-            ...n,
-            nextScenarios: n.nextScenarios.filter(
+
+          const slotNodes = remainingNodes
+            .filter(
+              (n) =>
+                n.gridPosition.day === day &&
+                n.gridPosition.time === time &&
+                n.gridPosition.route === route,
+            )
+            .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
+
+          const cleanedNodes = remainingNodes.map((n) => {
+            const nextScenarios = n.nextScenarios.filter(
               (sid) => sid !== nodeToDelete.scenarioId,
-            ),
-            previousScenarios: n.previousScenarios.filter(
+            );
+            const previousScenarios = n.previousScenarios.filter(
               (sid) => sid !== nodeToDelete.scenarioId,
-            ),
-          }));
+            );
+
+            const slotIdx = slotNodes.findIndex((x) => x.id === n.id);
+            if (slotIdx !== -1) {
+              return {
+                ...n,
+                nextScenarios,
+                previousScenarios,
+                sortIndex: slotIdx,
+              };
+            }
+
+            return {
+              ...n,
+              nextScenarios,
+              previousScenarios,
+            };
+          });
 
           return {
             nodes: cleanedNodes,
@@ -260,7 +363,31 @@ export const useStore = create<StoreState>()(
       },
 
       importData: (data) => {
-        set({ nodes: data, selectedNodeIds: [], validationIssues: [] });
+        const grouped: Record<string, ScenarioNode[]> = {};
+
+        data.forEach((n) => {
+          const key = `${n.gridPosition.day}-${n.gridPosition.time}-${n.gridPosition.route}`;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(n);
+        });
+
+        const patchedData: ScenarioNode[] = [];
+        Object.values(grouped).forEach((group) => {
+          group.sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
+          group.forEach((n, idx) => {
+            patchedData.push({
+              ...n,
+              sortIndex: idx,
+              endInfo: {
+                ...n.endInfo,
+                atDay: n.endInfo.atDay || n.gridPosition.day,
+                atTime: n.endInfo.atTime || n.gridPosition.time,
+              },
+            });
+          });
+        });
+
+        set({ nodes: patchedData, selectedNodeIds: [], validationIssues: [] });
         get().validateAll();
       },
 
@@ -273,6 +400,7 @@ export const useStore = create<StoreState>()(
           {
             id: node1Id,
             scenarioId: "D01_RCommon_Sc001",
+            sortIndex: 0,
             gridPosition: { day: "Day1", time: "Morning", route: "Common" },
             loadInfo: {
               immediately: true,
@@ -280,13 +408,19 @@ export const useStore = create<StoreState>()(
               atDay: "Day1",
               atTime: "Morning",
             },
-            endInfo: { immediately: true, afterScenario: "None" },
+            endInfo: {
+              immediately: true,
+              afterScenario: "None",
+              atDay: "Day1",
+              atTime: "Morning",
+            },
             nextScenarios: ["D01_RCommon_Sc002"],
             previousScenarios: [],
           },
           {
             id: node2Id,
             scenarioId: "D01_RCommon_Sc002",
+            sortIndex: 0,
             gridPosition: { day: "Day1", time: "Afternoon", route: "Common" },
             loadInfo: {
               immediately: false,
@@ -294,13 +428,19 @@ export const useStore = create<StoreState>()(
               atDay: "Day1",
               atTime: "Afternoon",
             },
-            endInfo: { immediately: true, afterScenario: "None" },
+            endInfo: {
+              immediately: true,
+              afterScenario: "None",
+              atDay: "Day1",
+              atTime: "Afternoon",
+            },
             nextScenarios: ["D02_RAlyssa_Sc001"],
             previousScenarios: ["D01_RCommon_Sc001"],
           },
           {
             id: node3Id,
             scenarioId: "D02_RAlyssa_Sc001",
+            sortIndex: 0,
             gridPosition: { day: "Day2", time: "Morning", route: "Alyssa" },
             loadInfo: {
               immediately: false,
@@ -308,7 +448,12 @@ export const useStore = create<StoreState>()(
               atDay: "Day2",
               atTime: "Morning",
             },
-            endInfo: { immediately: true, afterScenario: "None" },
+            endInfo: {
+              immediately: true,
+              afterScenario: "None",
+              atDay: "Day2",
+              atTime: "Morning",
+            },
             nextScenarios: [],
             previousScenarios: ["D01_RCommon_Sc002"],
           },

@@ -23,14 +23,7 @@ export const ConnectionLayer = () => {
     .filter(Boolean);
 
   const getStackIndex = (node: (typeof nodes)[0]) => {
-    const siblings = nodes.filter(
-      (n) =>
-        n.gridPosition.day === node.gridPosition.day &&
-        n.gridPosition.time === node.gridPosition.time &&
-        n.gridPosition.route === node.gridPosition.route,
-    );
-    siblings.sort((a, b) => a.id.localeCompare(b.id));
-    return siblings.findIndex((n) => n.id === node.id);
+    return node.sortIndex || 0;
   };
 
   const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
@@ -54,7 +47,6 @@ export const ConnectionLayer = () => {
 
   return (
     <svg
-      // Changed z-30 to z-10 to ensure it sits behind the nodes (which are z-20)
       className="absolute top-0 left-0 pointer-events-none z-10 transition-all duration-300 ease-in-out"
       style={{ width, height }}
     >

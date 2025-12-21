@@ -5,6 +5,7 @@ import {
   GRID_CONFIG,
   PIN_COLORS_DARK,
   PIN_COLORS_LIGHT,
+  ROUTE_COLORS,
 } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
 import { cn } from "../../lib/utils";
@@ -33,14 +34,7 @@ export const ScenarioNode = ({
   const hasError = issues.some((i) => i.type === "error");
   const hasWarning = issues.some((i) => i.type === "warning");
 
-  const siblings = nodes.filter(
-    (n) =>
-      n.gridPosition.day === node.gridPosition.day &&
-      n.gridPosition.time === node.gridPosition.time &&
-      n.gridPosition.route === node.gridPosition.route,
-  );
-  siblings.sort((a, b) => a.id.localeCompare(b.id));
-  const stackIndex = siblings.findIndex((n) => n.id === node.id);
+  const stackIndex = node.sortIndex || 0;
 
   const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
 
@@ -59,14 +53,15 @@ export const ScenarioNode = ({
 
   const pinColors = darkMode ? PIN_COLORS_DARK : PIN_COLORS_LIGHT;
 
+  const routeColor =
+    ROUTE_COLORS[node.gridPosition.route] || ROUTE_COLORS.Common;
+  const bgColor = darkMode ? routeColor.dark : routeColor.light;
+  const borderColor = routeColor.border;
+
   return (
     <div
       className={cn(
-        // Added pointer-events-auto because the parent container in Canvas.tsx is pointer-events-none
         "absolute cursor-grab active:cursor-grabbing select-none flex flex-col border-2 transition-all duration-300 ease-in-out group font-mono rounded-md pointer-events-auto",
-        darkMode
-          ? "bg-slate-700 border-slate-400 text-white"
-          : "bg-[#ff99aa] border-black text-black",
         isSelected
           ? "shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px] z-30"
           : "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-20",
@@ -81,6 +76,9 @@ export const ScenarioNode = ({
         top: coords.y,
         width: GRID_CONFIG.nodeWidth,
         height: GRID_CONFIG.nodeHeight,
+        backgroundColor: hasError || hasWarning ? undefined : bgColor,
+        borderColor: hasError || hasWarning ? undefined : borderColor,
+        color: darkMode ? "white" : "black",
       }}
       onMouseDown={(e) => onMouseDown(e, node.id)}
       onMouseUp={(e) => onConnectEnd(e, node.id)}
@@ -89,9 +87,12 @@ export const ScenarioNode = ({
         className={cn(
           "px-2 py-1 border-b-2 flex items-center justify-between shrink-0",
           darkMode
-            ? "border-slate-500 bg-white/10"
-            : "border-black bg-white/20",
+            ? "border-slate-500 bg-black/20"
+            : "border-black bg-white/40",
         )}
+        style={{
+          borderColor: hasError || hasWarning ? undefined : borderColor,
+        }}
       >
         <span
           className="text-[10px] font-bold truncate flex-1"
@@ -105,45 +106,52 @@ export const ScenarioNode = ({
         </div>
       </div>
 
-      <div className="p-2 text-[10px] space-y-2 overflow-y-auto leading-tight flex-1">
-        <div className="space-y-1">
-          <div className="font-bold opacity-70 border-b border-current/20 pb-0.5">
-            LOAD
-          </div>
-          <div className="flex justify-between">
-            <span>Type:</span>
-            <span className="font-bold">
-              {node.loadInfo.immediately ? "IMMEDIATE" : "WAIT"}
-            </span>
-          </div>
-          {!node.loadInfo.immediately && (
-            <div className="flex flex-col">
-              <span className="opacity-70">After:</span>
-              <span className="truncate font-mono text-[9px]">
-                {node.loadInfo.afterScenario}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <div
+          className={cn(
+            "flex-1 p-2 border-b border-dashed",
+            darkMode ? "border-slate-500" : "border-black/30",
+          )}
+        >
+          <div className="text-[9px] font-bold opacity-70 mb-1">LOAD INFO</div>
+          <div className="text-[10px] leading-tight">
+            <div className="flex justify-between">
+              <span>Mode:</span>
+              <span className="font-bold">
+                {node.loadInfo.immediately ? "IMMEDIATE" : "WAIT"}
               </span>
             </div>
-          )}
+            {!node.loadInfo.immediately && (
+              <div className="mt-1 pl-1 border-l-2 border-current/30">
+                <div className="truncate opacity-80">
+                  {node.loadInfo.afterScenario}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <div className="font-bold opacity-70 border-b border-current/20 pb-0.5">
-            END
-          </div>
-          <div className="flex justify-between">
-            <span>Type:</span>
-            <span className="font-bold">
-              {node.endInfo.immediately ? "IMMEDIATE" : "WAIT"}
-            </span>
-          </div>
-          {!node.endInfo.immediately && (
-            <div className="flex flex-col">
-              <span className="opacity-70">After:</span>
-              <span className="truncate font-mono text-[9px]">
-                {node.endInfo.afterScenario}
+        <div className="flex-1 p-2 bg-black/5">
+          <div className="text-[9px] font-bold opacity-70 mb-1">END INFO</div>
+          <div className="text-[10px] leading-tight">
+            <div className="flex justify-between">
+              <span>Mode:</span>
+              <span className="font-bold">
+                {node.endInfo.immediately ? "IMMEDIATE" : "WAIT"}
               </span>
             </div>
-          )}
+            <div className="flex justify-between mt-0.5 text-[9px] opacity-80">
+              <span>{node.endInfo.atDay}</span>
+              <span>{node.endInfo.atTime}</span>
+            </div>
+            {!node.endInfo.immediately && (
+              <div className="mt-1 pl-1 border-l-2 border-current/30">
+                <div className="truncate opacity-80">
+                  {node.endInfo.afterScenario}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

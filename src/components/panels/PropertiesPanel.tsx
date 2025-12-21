@@ -78,6 +78,7 @@ export const PropertiesPanel = () => {
           />
         </div>
 
+        {/* LOAD CONFIG */}
         <div
           className={cn(
             "space-y-4 border-t-2 border-dashed pt-4",
@@ -186,6 +187,7 @@ export const PropertiesPanel = () => {
           </div>
         </div>
 
+        {/* END CONFIG */}
         <div
           className={cn(
             "space-y-4 border-t-2 border-dashed pt-4",
@@ -248,6 +250,50 @@ export const PropertiesPanel = () => {
               </Select>
             </div>
           )}
+
+          {/* Added Day/Time selectors for EndInfo */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase">At Day</label>
+              <Select
+                value={node.endInfo.atDay}
+                onChange={(e) =>
+                  updateNode(node.id, {
+                    endInfo: { ...node.endInfo, atDay: e.target.value as any },
+                  })
+                }
+                className={
+                  darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
+                }
+              >
+                {DAYS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold uppercase">At Time</label>
+              <Select
+                value={node.endInfo.atTime}
+                onChange={(e) =>
+                  updateNode(node.id, {
+                    endInfo: { ...node.endInfo, atTime: e.target.value as any },
+                  })
+                }
+                className={
+                  darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
+                }
+              >
+                {TIMES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
         </div>
 
         <div

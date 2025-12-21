@@ -76,7 +76,20 @@ export const Canvas = () => {
         y,
         layoutMap,
       );
-      moveNode(draggingId, day, time, route);
+
+      const colKey = `${day}-${time}`;
+      const colData = layoutMap.columns[colKey];
+      let targetIndex = 0;
+
+      if (colData) {
+        const relativeX = x - colData.startX;
+
+        const slotWidth = GRID_CONFIG.nodeWidth + GRID_CONFIG.nodeGap;
+        targetIndex = Math.floor(relativeX / slotWidth);
+        if (targetIndex < 0) targetIndex = 0;
+      }
+
+      moveNode(draggingId, day, time, route, targetIndex);
     }
   };
 
@@ -189,10 +202,8 @@ export const Canvas = () => {
           >
             <GridBackground />
 
-            {/* ConnectionLayer moved BEFORE nodes, and z-index lowered in its component */}
             <ConnectionLayer />
 
-            {/* Nodes container: z-20 to sit on top of lines (z-10). pointer-events-none to let clicks pass through to lines */}
             <div className="absolute left-0 top-0 z-20 h-full w-full pointer-events-none">
               {nodes.map((node) => (
                 <ScenarioNode

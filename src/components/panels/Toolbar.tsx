@@ -3,6 +3,7 @@ import { Button } from "../ui/button";
 import { useStore } from "../../store/useStore";
 import { ScenarioNode } from "../../types/schema";
 import { cn } from "../../lib/utils";
+import { v4 as uuidv4 } from "uuid";
 
 export const Toolbar = () => {
   const nodes = useStore((state) => state.nodes);
@@ -15,14 +16,29 @@ export const Toolbar = () => {
   const handleExport = () => {
     validateAll();
 
-    const cleanNodes = nodes.map((node) => {
-      const { scenarioId, gridPosition, ...rest } = node;
-      return rest;
-    });
+    const exportData = nodes.map((node) => ({
+      ScenarioInfo: {
+        CurrentScenario: node.scenarioId,
+        NextScenarios: node.nextScenarios,
+        PreviousScenarios: node.previousScenarios,
+      },
+      LoadInfo: {
+        Immediately: node.loadInfo.immediately,
+        AfterScenario: node.loadInfo.afterScenario,
+        AtDay: node.loadInfo.atDay,
+        AtTime: node.loadInfo.atTime,
+      },
+      EndInfo: {
+        Immediately: node.endInfo.immediately,
+        AfterScenario: node.endInfo.afterScenario,
+        AtDay: node.endInfo.atDay,
+        AtTime: node.endInfo.atTime,
+      },
+    }));
 
     const dataStr =
       "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(cleanNodes, null, 2));
+      encodeURIComponent(JSON.stringify(exportData, null, 2));
     const downloadAnchorNode = document.createElement("a");
     downloadAnchorNode.setAttribute("href", dataStr);
     downloadAnchorNode.setAttribute("download", "scenarios.json");
@@ -38,15 +54,65 @@ export const Toolbar = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const json = JSON.parse(
-          event.target?.result as string,
-        ) as ScenarioNode[];
+        const json = JSON.parse(event.target?.result as string);
+
         if (Array.isArray(json)) {
-          importData(json);
+          if (json.length > 0 && "ScenarioInfo" in json[0]) {
+            const mappedNodes: ScenarioNode[] = json.map((item: any) => ({
+              id: uuidv4(),
+              scenarioId: item.ScenarioInfo.CurrentScenario,
+              sortIndex: 0,
+              gridPosition: {
+                day: item.LoadInfo.AtDay,
+                time: item.LoadInfo.AtTime,
+                route: "Common",
+              },
+              loadInfo: {
+                immediately: item.LoadInfo.Immediately,
+                afterScenario: item.LoadInfo.AfterScenario,
+                atDay: item.LoadInfo.AtDay,
+                atTime: item.LoadInfo.AtTime,
+              },
+              endInfo: {
+                immediately: item.EndInfo.Immediately,
+                afterScenario: item.EndInfo.AfterScenario,
+                atDay: item.EndInfo.AtDay,
+                atTime: item.EndInfo.AtTime,
+              },
+              nextScenarios: item.ScenarioInfo.NextScenarios,
+              previousScenarios: item.ScenarioInfo.PreviousScenarios,
+            }));
+
+            mappedNodes.forEach((n) => {
+              if (n.scenarioId.includes("_R")) {
+                const parts = n.scenarioId.split("_");
+                const routePart = parts.find((p) => p.startsWith("R"));
+                if (routePart) {
+                  const routeName = routePart.substring(1);
+                  if (
+                    [
+                      "Common",
+                      "Alyssa",
+                      "Rhea",
+                      "Natalie",
+                      "OtherQuest",
+                    ].includes(routeName)
+                  ) {
+                    n.gridPosition.route = routeName as any;
+                  }
+                }
+              }
+            });
+
+            importData(mappedNodes);
+          } else {
+            importData(json as ScenarioNode[]);
+          }
         } else {
           alert("Invalid JSON format");
         }
       } catch (err) {
+        console.error(err);
         alert("Error parsing JSON");
       }
     };

@@ -19,10 +19,10 @@ export const GRID_CONFIG = {
   minColWidth: 250,
   nodeWidth: 240,
   nodeGap: 50,
-  rowHeight: 200,
+  rowHeight: 250,
   headerHeight: 60,
   sidebarWidth: 120,
-  nodeHeight: 160,
+  nodeHeight: 180,
 };
 
 export const COLORS = {
@@ -42,6 +42,37 @@ export const COLORS = {
     Afternoon: "#14532d",
     Evening: "#7c2d12",
     Night: "#334155",
+  },
+};
+
+export const ROUTE_COLORS: Record<
+  RouteEnum,
+  { light: string; dark: string; border: string }
+> = {
+  Common: { light: "#e5e7eb", dark: "#374151", border: "#6b7280" },
+
+  Alyssa: {
+    light: "#c7e89b",
+    dark: "#4d7c0f",
+    border: "#84cc16",
+  },
+
+  Rhea: {
+    light: "#fde68a",
+    dark: "#92400e",
+    border: "#facc15",
+  },
+
+  Natalie: {
+    light: "#f5b7c2",
+    dark: "#9f1239",
+    border: "#e11d48",
+  },
+
+  OtherQuest: {
+    light: "#bae6fd",
+    dark: "#0c4a6e",
+    border: "#0284c7",
   },
 };
 

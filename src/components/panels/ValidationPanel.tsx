@@ -7,7 +7,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { useEffect, useState } from "react";
 
 export const ValidationPanel = () => {
   const issues = useStore((state) => state.validationIssues);
@@ -15,49 +14,6 @@ export const ValidationPanel = () => {
   const isOpen = useStore((state) => state.isValidationPanelOpen);
   const toggleOpen = useStore((state) => state.toggleValidationPanel);
   const darkMode = useStore((state) => state.darkMode);
-
-  const [activeSprite, setActiveSprite] = useState<string | null>(null);
-  const [isSpriteVisible, setIsSpriteVisible] = useState(false);
-  const [spriteX, setSpriteX] = useState(0);
-
-  useEffect(() => {
-    let showTimeout: number;
-    let hideTimeout: number;
-
-    const scheduleNextSprite = () => {
-      const delay = Math.floor(Math.random() * 5000) + 3000;
-
-      showTimeout = setTimeout(() => {
-        const sprite =
-          Math.random() > 0.5
-            ? "/scenariograph/NathanSpriteScaled.png"
-            : "/scenariograph/RheaSpriteScaled.png";
-
-        const randomX = Math.floor(Math.random() * 80) + 10;
-
-        setSpriteX(randomX);
-        setActiveSprite(sprite);
-        setIsSpriteVisible(true);
-
-        const duration = Math.floor(Math.random() * 2000) + 2000;
-
-        hideTimeout = setTimeout(() => {
-          setIsSpriteVisible(false);
-          setTimeout(() => {
-            setActiveSprite(null);
-            scheduleNextSprite();
-          }, 500);
-        }, duration);
-      }, delay);
-    };
-
-    scheduleNextSprite();
-
-    return () => {
-      clearTimeout(showTimeout);
-      clearTimeout(hideTimeout);
-    };
-  }, []);
 
   return (
     <div
@@ -67,20 +23,6 @@ export const ValidationPanel = () => {
         darkMode ? "bg-slate-800 border-slate-600" : "bg-white border-black",
       )}
     >
-      {activeSprite && (
-        <img
-          src={activeSprite}
-          alt="Character Sprite"
-          className={cn(
-            "absolute w-16 h-auto transition-all duration-500 ease-in-out pointer-events-none",
-            isSpriteVisible
-              ? "bottom-full opacity-100 translate-y-0"
-              : "bottom-10 opacity-0 translate-y-10",
-          )}
-          style={{ left: `${spriteX}%`, zIndex: -1 }}
-        />
-      )}
-
       <div
         className={cn(
           "px-4 h-10 border-b-4 flex items-center justify-between cursor-pointer transition-colors relative z-10",

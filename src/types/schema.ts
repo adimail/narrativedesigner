@@ -42,11 +42,14 @@ export interface LoadInfo {
 export interface EndInfo {
   immediately: boolean;
   afterScenario: string;
+  atDay: DayEnum;
+  atTime: TimeEnum;
 }
 
 export interface ScenarioNode {
   id: string;
   scenarioId: string;
+  sortIndex: number;
   gridPosition: {
     day: DayEnum;
     time: TimeEnum;
