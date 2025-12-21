@@ -1,7 +1,11 @@
 import React, { useMemo } from "react";
 import { useStore } from "../../store/useStore";
 import { getCoordinates, getColumnLayout } from "../../lib/utils";
-import { GRID_CONFIG, COLORS } from "../../lib/constants";
+import {
+  GRID_CONFIG,
+  PIN_COLORS_DARK,
+  PIN_COLORS_LIGHT,
+} from "../../lib/constants";
 
 export const ConnectionLayer = () => {
   const nodes = useStore((state) => state.nodes);
@@ -34,6 +38,9 @@ export const ConnectionLayer = () => {
   const width = layoutMap.totalWidth;
   const height = GRID_CONFIG.headerHeight + 5 * GRID_CONFIG.rowHeight;
 
+  const pinColors = darkMode ? PIN_COLORS_DARK : PIN_COLORS_LIGHT;
+  const modeSuffix = darkMode ? "dark" : "light";
+
   const handleLinkClick = (
     e: React.MouseEvent,
     sourceId: string,
@@ -47,7 +54,8 @@ export const ConnectionLayer = () => {
 
   return (
     <svg
-      className="absolute top-0 left-0 pointer-events-none z-0 transition-all duration-300 ease-in-out"
+      // Changed z-30 to z-10 to ensure it sits behind the nodes (which are z-20)
+      className="absolute top-0 left-0 pointer-events-none z-10 transition-all duration-300 ease-in-out"
       style={{ width, height }}
     >
       {connections.map((conn, idx) => {
@@ -71,15 +79,24 @@ export const ConnectionLayer = () => {
           layoutMap,
         );
 
+        const pinIndex = conn.source.nextScenarios.indexOf(
+          conn.target.scenarioId,
+        );
+        const totalPins = conn.source.nextScenarios.length;
+        const pinSpacing = 24;
+        const startPinY =
+          GRID_CONFIG.nodeHeight / 2 - ((totalPins - 1) * pinSpacing) / 2;
+        const pinOffsetY = startPinY + pinIndex * pinSpacing;
+
         const startX = start.x + GRID_CONFIG.nodeWidth;
-        const startY = start.y + GRID_CONFIG.nodeHeight / 2;
+        const startY = start.y + pinOffsetY;
         const endX = end.x;
         const endY = end.y + GRID_CONFIG.nodeHeight / 2;
 
         const controlPointOffset = Math.abs(endX - startX) * 0.5;
         const path = `M ${startX} ${startY} C ${startX + controlPointOffset} ${startY}, ${endX - controlPointOffset} ${endY}, ${endX} ${endY}`;
 
-        const strokeColor = darkMode ? "#94a3b8" : COLORS.connection;
+        const strokeColor = pinColors[pinIndex % pinColors.length];
 
         return (
           <g
@@ -100,27 +117,27 @@ export const ConnectionLayer = () => {
               d={path}
               fill="none"
               stroke={strokeColor}
-              strokeWidth="2"
-              markerEnd="url(#arrowhead)"
-              className="group-hover:stroke-red-500 transition-colors"
+              strokeWidth="3"
+              markerEnd={`url(#arrowhead-${modeSuffix}-${pinIndex % pinColors.length})`}
+              className="transition-colors opacity-90"
             />
           </g>
         );
       })}
       <defs>
-        <marker
-          id="arrowhead"
-          markerWidth="10"
-          markerHeight="7"
-          refX="9"
-          refY="3.5"
-          orient="auto"
-        >
-          <polygon
-            points="0 0, 10 3.5, 0 7"
-            fill={darkMode ? "#94a3b8" : COLORS.connection}
-          />
-        </marker>
+        {pinColors.map((color, i) => (
+          <marker
+            key={`${modeSuffix}-${i}`}
+            id={`arrowhead-${modeSuffix}-${i}`}
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill={color} />
+          </marker>
+        ))}
       </defs>
     </svg>
   );

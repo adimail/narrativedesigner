@@ -8,7 +8,7 @@ import {
   getGridPositionFromCoordinates,
   getColumnLayout,
 } from "../../lib/utils";
-import { GRID_CONFIG, DAYS, ROUTES } from "../../lib/constants";
+import { GRID_CONFIG, ROUTES } from "../../lib/constants";
 import { Button } from "../ui/button";
 import { Play } from "lucide-react";
 import { cn } from "../../lib/utils";
@@ -188,7 +188,22 @@ export const Canvas = () => {
             onContextMenu={handleContextMenu}
           >
             <GridBackground />
+
+            {/* ConnectionLayer moved BEFORE nodes, and z-index lowered in its component */}
             <ConnectionLayer />
+
+            {/* Nodes container: z-20 to sit on top of lines (z-10). pointer-events-none to let clicks pass through to lines */}
+            <div className="absolute left-0 top-0 z-20 h-full w-full pointer-events-none">
+              {nodes.map((node) => (
+                <ScenarioNode
+                  key={node.id}
+                  node={node}
+                  onMouseDown={handleMouseDown}
+                  onConnectStart={handleConnectStart}
+                  onConnectEnd={handleConnectEnd}
+                />
+              ))}
+            </div>
 
             {tempLine && (
               <svg className="pointer-events-none absolute left-0 top-0 z-50 h-full w-full">
@@ -203,18 +218,6 @@ export const Canvas = () => {
                 />
               </svg>
             )}
-
-            <div className="absolute left-0 top-0 z-10 h-full w-full">
-              {nodes.map((node) => (
-                <ScenarioNode
-                  key={node.id}
-                  node={node}
-                  onMouseDown={handleMouseDown}
-                  onConnectStart={handleConnectStart}
-                  onConnectEnd={handleConnectEnd}
-                />
-              ))}
-            </div>
           </div>
         </TransformComponent>
       </TransformWrapper>

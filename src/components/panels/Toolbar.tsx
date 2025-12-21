@@ -79,7 +79,7 @@ export const Toolbar = () => {
             darkMode ? "bg-slate-600 text-white" : "bg-black text-white",
           )}
         >
-          SCENARIO_GRAPH
+          ICWRouteVisualizer
         </div>
         <div
           className={cn("h-8 w-1 mx-2", darkMode ? "bg-slate-500" : "bg-black")}
