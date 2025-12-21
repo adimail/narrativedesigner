@@ -9,9 +9,11 @@ import {
   ValidationIssue,
 } from "../types/schema";
 import { validateNode } from "../lib/utils";
+import { DEFAULT_ROUTES } from "../lib/constants";
 
 interface StoreState {
   nodes: ScenarioNode[];
+  routes: RouteEnum[];
   selectedNodeIds: string[];
   validationIssues: ValidationIssue[];
   scale: number;
@@ -27,6 +29,7 @@ interface StoreState {
     time: TimeEnum,
     route: RouteEnum,
     targetIndex?: number,
+    branchIndex?: number,
   ) => void;
   deleteNode: (id: string) => void;
   selectNode: (id: string, multi: boolean) => void;
@@ -42,12 +45,40 @@ interface StoreState {
   togglePropertiesPanel: () => void;
   toggleValidationPanel: () => void;
   toggleDarkMode: () => void;
+  createBranch: (route: string) => number;
 }
+
+const normalizeBranches = (
+  nodes: ScenarioNode[],
+  route: RouteEnum,
+): ScenarioNode[] => {
+  const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
+  const otherNodes = nodes.filter((n) => n.gridPosition.route !== route);
+
+  if (routeNodes.length === 0) return nodes;
+
+  const usedBranches = Array.from(
+    new Set(routeNodes.map((n) => n.branchIndex || 0)),
+  ).sort((a, b) => a - b);
+
+  const branchMap = new Map<number, number>();
+  usedBranches.forEach((oldIdx, newIdx) => {
+    branchMap.set(oldIdx, newIdx);
+  });
+
+  const updatedRouteNodes = routeNodes.map((n) => ({
+    ...n,
+    branchIndex: branchMap.get(n.branchIndex || 0) || 0,
+  }));
+
+  return [...otherNodes, ...updatedRouteNodes];
+};
 
 export const useStore = create<StoreState>()(
   persist(
     (set, get) => ({
       nodes: [],
+      routes: [...DEFAULT_ROUTES],
       selectedNodeIds: [],
       validationIssues: [],
       scale: 1,
@@ -55,31 +86,53 @@ export const useStore = create<StoreState>()(
       isValidationPanelOpen: true,
       darkMode: false,
 
+      createBranch: (route) => {
+        const { nodes } = get();
+        const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
+        const maxBranch = routeNodes.reduce(
+          (max, n) => Math.max(max, n.branchIndex || 0),
+          0,
+        );
+        return maxBranch + 1;
+      },
+
       addNode: (day, time, route) => {
         const { nodes } = get();
 
         const dayNum = day.replace("Day", "").padStart(2, "0");
         const routePrefix = route;
 
-        const existingInRoute = nodes.filter(
-          (n) => n.gridPosition.day === day && n.gridPosition.route === route,
+        let counter = 1;
+        let scenarioId = "";
+        while (true) {
+          scenarioId = `D${dayNum}_R${routePrefix}_Sc${counter
+            .toString()
+            .padStart(3, "0")}`;
+          const exists = nodes.some((n) => n.scenarioId === scenarioId);
+          if (!exists) {
+            break;
+          }
+          counter++;
+        }
+
+        const existingInCell = nodes.filter(
+          (n) =>
+            n.gridPosition.day === day &&
+            n.gridPosition.time === time &&
+            n.gridPosition.route === route &&
+            (n.branchIndex || 0) === 0,
         );
 
-        const maxSortIndex = existingInRoute.reduce(
+        const maxSortIndex = existingInCell.reduce(
           (max, n) => Math.max(max, n.sortIndex || 0),
           -1,
         );
-
-        const nextIndex = (existingInRoute.length + 1)
-          .toString()
-          .padStart(3, "0");
-
-        const scenarioId = `D${dayNum}_R${routePrefix}_Sc${nextIndex}`;
 
         const newNode: ScenarioNode = {
           id: uuidv4(),
           scenarioId,
           sortIndex: maxSortIndex + 1,
+          branchIndex: 0,
           description: "",
           gridPosition: { day, time, route },
           loadInfo: {
@@ -153,7 +206,7 @@ export const useStore = create<StoreState>()(
         get().validateAll();
       },
 
-      moveNode: (id, day, time, route, targetIndex) => {
+      moveNode: (id, day, time, route, targetIndex, branchIndex) => {
         const { nodes } = get();
         const nodeToMove = nodes.find((n) => n.id === id);
         if (!nodeToMove) return;
@@ -161,9 +214,18 @@ export const useStore = create<StoreState>()(
         const oldDay = nodeToMove.gridPosition.day;
         const oldTime = nodeToMove.gridPosition.time;
         const oldRoute = nodeToMove.gridPosition.route;
+        const oldBranch = nodeToMove.branchIndex || 0;
+
+        let targetBranch = branchIndex;
+        if (targetBranch === undefined) {
+          targetBranch = route === oldRoute ? oldBranch : 0;
+        }
 
         const isSameSlot =
-          oldDay === day && oldTime === time && oldRoute === route;
+          oldDay === day &&
+          oldTime === time &&
+          oldRoute === route &&
+          oldBranch === targetBranch;
 
         const targetSiblings = nodes
           .filter(
@@ -171,7 +233,8 @@ export const useStore = create<StoreState>()(
               n.id !== id &&
               n.gridPosition.day === day &&
               n.gridPosition.time === time &&
-              n.gridPosition.route === route,
+              n.gridPosition.route === route &&
+              (n.branchIndex || 0) === targetBranch,
           )
           .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
 
@@ -186,6 +249,7 @@ export const useStore = create<StoreState>()(
           {
             ...nodeToMove,
             gridPosition: { day, time, route },
+            branchIndex: targetBranch,
             loadInfo: { ...nodeToMove.loadInfo, atDay: day, atTime: time },
           },
           ...targetSiblings.slice(finalIndex),
@@ -199,18 +263,20 @@ export const useStore = create<StoreState>()(
                 n.id !== id &&
                 n.gridPosition.day === oldDay &&
                 n.gridPosition.time === oldTime &&
-                n.gridPosition.route === oldRoute,
+                n.gridPosition.route === oldRoute &&
+                (n.branchIndex || 0) === oldBranch,
             )
             .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
         }
 
-        set((state) => ({
-          nodes: state.nodes.map((n) => {
+        set((state) => {
+          const updatedNodes = state.nodes.map((n) => {
             const targetIdx = newTargetOrder.findIndex((x) => x.id === n.id);
             if (targetIdx !== -1) {
               return {
                 ...n,
                 sortIndex: targetIdx,
+                branchIndex: targetBranch,
                 gridPosition: { day, time, route },
                 loadInfo:
                   n.id === id
@@ -230,8 +296,15 @@ export const useStore = create<StoreState>()(
             }
 
             return n;
-          }),
-        }));
+          });
+
+          let normalized = normalizeBranches(updatedNodes, oldRoute);
+          if (oldRoute !== route) {
+            normalized = normalizeBranches(normalized, route);
+          }
+
+          return { nodes: normalized };
+        });
         get().validateAll();
       },
 
@@ -240,6 +313,7 @@ export const useStore = create<StoreState>()(
         if (!nodeToDelete) return;
 
         const { day, time, route } = nodeToDelete.gridPosition;
+        const branch = nodeToDelete.branchIndex || 0;
 
         set((state) => {
           const remainingNodes = state.nodes.filter((n) => n.id !== id);
@@ -249,7 +323,8 @@ export const useStore = create<StoreState>()(
               (n) =>
                 n.gridPosition.day === day &&
                 n.gridPosition.time === time &&
-                n.gridPosition.route === route,
+                n.gridPosition.route === route &&
+                (n.branchIndex || 0) === branch,
             )
             .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
 
@@ -278,8 +353,10 @@ export const useStore = create<StoreState>()(
             };
           });
 
+          const normalized = normalizeBranches(cleanedNodes, route);
+
           return {
-            nodes: cleanedNodes,
+            nodes: normalized,
             selectedNodeIds: state.selectedNodeIds.filter((sid) => sid !== id),
           };
         });
@@ -368,7 +445,7 @@ export const useStore = create<StoreState>()(
         const grouped: Record<string, ScenarioNode[]> = {};
 
         data.forEach((n) => {
-          const key = `${n.gridPosition.day}-${n.gridPosition.time}-${n.gridPosition.route}`;
+          const key = `${n.gridPosition.day}-${n.gridPosition.time}-${n.gridPosition.route}-${n.branchIndex || 0}`;
           if (!grouped[key]) grouped[key] = [];
           grouped[key].push(n);
         });
@@ -380,6 +457,7 @@ export const useStore = create<StoreState>()(
             patchedData.push({
               ...n,
               sortIndex: idx,
+              branchIndex: n.branchIndex || 0,
               description: n.description || "",
               endInfo: {
                 ...n.endInfo,
@@ -409,6 +487,7 @@ export const useStore = create<StoreState>()(
             id: node1Id,
             scenarioId: "D01_RCommon_Sc001",
             sortIndex: 0,
+            branchIndex: 0,
             description: "Start of the game",
             gridPosition: { day: "Day1", time: "Morning", route: "Common" },
             loadInfo: {
@@ -430,6 +509,7 @@ export const useStore = create<StoreState>()(
             id: node2Id,
             scenarioId: "D01_RCommon_Sc002",
             sortIndex: 0,
+            branchIndex: 0,
             description: "Second scene",
             gridPosition: { day: "Day1", time: "Afternoon", route: "Common" },
             loadInfo: {
@@ -451,6 +531,7 @@ export const useStore = create<StoreState>()(
             id: node3Id,
             scenarioId: "D02_RAlyssa_Sc001",
             sortIndex: 0,
+            branchIndex: 0,
             description: "Alyssa route start",
             gridPosition: { day: "Day2", time: "Morning", route: "Alyssa" },
             loadInfo: {
@@ -481,6 +562,7 @@ export const useStore = create<StoreState>()(
       clearAll: () => {
         set({
           nodes: [],
+          routes: [...DEFAULT_ROUTES],
           selectedNodeIds: [],
           validationIssues: [],
         });

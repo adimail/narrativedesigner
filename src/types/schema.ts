@@ -50,6 +50,7 @@ export interface ScenarioNode {
   id: string;
   scenarioId: string;
   sortIndex: number;
+  branchIndex?: number;
   description?: string;
   gridPosition: {
     day: DayEnum;

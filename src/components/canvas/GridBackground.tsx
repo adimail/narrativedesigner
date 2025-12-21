@@ -1,17 +1,25 @@
-import { DAYS, TIMES, ROUTES, GRID_CONFIG, COLORS } from "../../lib/constants";
+import { DAYS, TIMES, GRID_CONFIG, COLORS } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
-import { cn, getColumnLayout } from "../../lib/utils";
+import { cn, getColumnLayout, getRowLayout } from "../../lib/utils";
 import { useMemo } from "react";
 
 export const GridBackground = () => {
   const darkMode = useStore((state) => state.darkMode);
   const nodes = useStore((state) => state.nodes);
+  const routes = useStore((state) => state.routes);
 
-  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
+  const layoutMap = useMemo(
+    () => getColumnLayout(nodes, routes),
+    [nodes, routes],
+  );
+
+  const rowLayoutMap = useMemo(
+    () => getRowLayout(nodes, routes),
+    [nodes, routes],
+  );
 
   const width = layoutMap.totalWidth;
-  const height =
-    GRID_CONFIG.headerHeight + ROUTES.length * GRID_CONFIG.rowHeight;
+  const height = rowLayoutMap.totalHeight;
 
   return (
     <div
@@ -21,20 +29,22 @@ export const GridBackground = () => {
       )}
       style={{ width, height }}
     >
-      {ROUTES.map((route, r) => (
-        <div
-          key={route}
-          className={cn(
-            "absolute w-full border-b transition-all duration-300 ease-in-out",
-            // Increased contrast: slate-500 for dark mode, gray-500 for light mode
-            darkMode ? "border-slate-500" : "border-gray-500",
-          )}
-          style={{
-            top: GRID_CONFIG.headerHeight + r * GRID_CONFIG.rowHeight,
-            height: GRID_CONFIG.rowHeight,
-          }}
-        />
-      ))}
+      {routes.map((route) => {
+        const rowData = rowLayoutMap.rows[route];
+        return (
+          <div
+            key={route}
+            className={cn(
+              "absolute w-full border-b transition-all duration-300 ease-in-out",
+              darkMode ? "border-slate-500" : "border-gray-500",
+            )}
+            style={{
+              top: rowData.startY,
+              height: rowData.height,
+            }}
+          />
+        );
+      })}
 
       {DAYS.map((day) =>
         TIMES.map((time) => {
@@ -113,25 +123,28 @@ export const GridBackground = () => {
         }),
       )}
 
-      {ROUTES.map((route, i) => (
-        <div
-          key={route}
-          className={cn(
-            "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20 transition-all duration-300 ease-in-out",
-            darkMode
-              ? "bg-slate-800 text-white border-slate-500"
-              : "bg-gray-100 text-black border-black",
-          )}
-          style={{
-            left: 0,
-            top: GRID_CONFIG.headerHeight + i * GRID_CONFIG.rowHeight,
-            width: GRID_CONFIG.sidebarWidth,
-            height: GRID_CONFIG.rowHeight,
-          }}
-        >
-          {route}
-        </div>
-      ))}
+      {routes.map((route) => {
+        const rowData = rowLayoutMap.rows[route];
+        return (
+          <div
+            key={route}
+            className={cn(
+              "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20 transition-all duration-300 ease-in-out",
+              darkMode
+                ? "bg-slate-800 text-white border-slate-500"
+                : "bg-gray-100 text-black border-black",
+            )}
+            style={{
+              left: 0,
+              top: rowData.startY,
+              width: GRID_CONFIG.sidebarWidth,
+              height: rowData.height,
+            }}
+          >
+            {route}
+          </div>
+        );
+      })}
 
       <div
         className={cn(

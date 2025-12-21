@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { DAYS, TIMES, ROUTES, GRID_CONFIG } from "./constants";
+import { DAYS, TIMES, GRID_CONFIG } from "./constants";
 import {
   DayEnum,
   RouteEnum,
@@ -13,7 +13,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getColumnLayout(nodes: ScenarioNode[]) {
+export function getColumnLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
   const columnLayout: Record<string, { startX: number; width: number }> = {};
   let currentX = GRID_CONFIG.sidebarWidth;
 
@@ -21,14 +21,23 @@ export function getColumnLayout(nodes: ScenarioNode[]) {
     TIMES.forEach((time) => {
       let maxNodesInSlot = 0;
 
-      ROUTES.forEach((route) => {
-        const count = nodes.filter(
+      routes.forEach((route) => {
+        const cellNodes = nodes.filter(
           (n) =>
             n.gridPosition.day === day &&
             n.gridPosition.time === time &&
             n.gridPosition.route === route,
-        ).length;
-        if (count > maxNodesInSlot) maxNodesInSlot = count;
+        );
+
+        const branchCounts: Record<number, number> = {};
+        cellNodes.forEach((n) => {
+          const bIdx = n.branchIndex || 0;
+          branchCounts[bIdx] = (branchCounts[bIdx] || 0) + 1;
+        });
+
+        const maxInAnyBranch = Math.max(0, ...Object.values(branchCounts));
+
+        if (maxInAnyBranch > maxNodesInSlot) maxNodesInSlot = maxInAnyBranch;
       });
 
       const effectiveCount = Math.max(1, maxNodesInSlot);
@@ -46,17 +55,51 @@ export function getColumnLayout(nodes: ScenarioNode[]) {
   return { columns: columnLayout, totalWidth: currentX };
 }
 
+export function getRowLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
+  const rowLayout: Record<
+    string,
+    { startY: number; height: number; maxBranch: number }
+  > = {};
+  let currentY = GRID_CONFIG.headerHeight;
+
+  routes.forEach((route) => {
+    const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
+    const maxBranch = routeNodes.reduce(
+      (max, n) => Math.max(max, n.branchIndex || 0),
+      0,
+    );
+
+    const height = GRID_CONFIG.rowHeight + maxBranch * GRID_CONFIG.branchHeight;
+
+    rowLayout[route] = { startY: currentY, height, maxBranch };
+    currentY += height;
+  });
+
+  return { rows: rowLayout, totalHeight: currentY };
+}
+
 export function getCoordinates(
   day: DayEnum,
   time: TimeEnum,
   route: RouteEnum,
+  branchIndex: number = 0,
   indexInSlot: number = 0,
   layoutMap?: ReturnType<typeof getColumnLayout>,
+  rowLayoutMap?: ReturnType<typeof getRowLayout>,
 ) {
-  const routeIndex = ROUTES.indexOf(route);
-  const y = GRID_CONFIG.headerHeight + routeIndex * GRID_CONFIG.rowHeight + 20;
-
   let x = 0;
+  let y = 0;
+
+  if (rowLayoutMap && rowLayoutMap.rows[route]) {
+    const rowData = rowLayoutMap.rows[route];
+
+    y =
+      rowData.startY +
+      branchIndex * GRID_CONFIG.branchHeight +
+      (GRID_CONFIG.rowHeight - GRID_CONFIG.nodeHeight) / 2;
+  } else {
+    y = GRID_CONFIG.headerHeight + 20;
+  }
 
   if (layoutMap) {
     const colKey = `${day}-${time}`;
@@ -84,14 +127,28 @@ export function getGridPositionFromCoordinates(
   x: number,
   y: number,
   layoutMap: ReturnType<typeof getColumnLayout>,
+  rowLayoutMap: ReturnType<typeof getRowLayout>,
+  routes: RouteEnum[],
 ) {
-  const adjustedY = Math.max(0, y - GRID_CONFIG.headerHeight);
-  const routeIndex = Math.floor(adjustedY / GRID_CONFIG.rowHeight);
-  const clampedRoute = Math.max(0, Math.min(routeIndex, ROUTES.length - 1));
-  const route = ROUTES[clampedRoute];
-
+  let foundRoute = routes[0];
   let foundDay = DAYS[0];
   let foundTime = TIMES[0];
+
+  for (const route of routes) {
+    const rowData = rowLayoutMap.rows[route];
+    if (y >= rowData.startY && y < rowData.startY + rowData.height) {
+      foundRoute = route;
+      break;
+    }
+  }
+
+  const lastRoute = routes[routes.length - 1];
+  if (
+    y >=
+    rowLayoutMap.rows[lastRoute].startY + rowLayoutMap.rows[lastRoute].height
+  ) {
+    foundRoute = lastRoute;
+  }
 
   for (const day of DAYS) {
     for (const time of TIMES) {
@@ -118,7 +175,7 @@ export function getGridPositionFromCoordinates(
   return {
     day: foundDay,
     time: foundTime,
-    route,
+    route: foundRoute,
   };
 }
 

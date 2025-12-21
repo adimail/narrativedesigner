@@ -7,19 +7,23 @@ import { ScenarioNode } from "./ScenarioNode";
 import {
   getGridPositionFromCoordinates,
   getColumnLayout,
+  getRowLayout,
 } from "../../lib/utils";
-import { GRID_CONFIG, ROUTES } from "../../lib/constants";
+import { GRID_CONFIG } from "../../lib/constants";
 import { Button } from "../ui/button";
-import { Play } from "lucide-react";
+import { Play, Plus } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { DayEnum, TimeEnum, RouteEnum } from "../../types/schema";
 
 export const Canvas = () => {
   const nodes = useStore((state) => state.nodes);
+  const routes = useStore((state) => state.routes);
   const moveNode = useStore((state) => state.moveNode);
   const selectNode = useStore((state) => state.selectNode);
   const clearSelection = useStore((state) => state.clearSelection);
   const connectNodes = useStore((state) => state.connectNodes);
   const addNode = useStore((state) => state.addNode);
+  const createBranch = useStore((state) => state.createBranch);
   const setScale = useStore((state) => state.setScale);
   const loadSampleData = useStore((state) => state.loadSampleData);
   const darkMode = useStore((state) => state.darkMode);
@@ -35,29 +39,50 @@ export const Canvas = () => {
     y2: number;
   } | null>(null);
 
+  const [branchDropTarget, setBranchDropTarget] = useState<{
+    day: DayEnum;
+    time: TimeEnum;
+    route: RouteEnum;
+    y: number;
+    x: number;
+    width: number;
+  } | null>(null);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
+  const layoutMap = useMemo(
+    () => getColumnLayout(nodes, routes),
+    [nodes, routes],
+  );
+
+  const rowLayoutMap = useMemo(
+    () => getRowLayout(nodes, routes),
+    [nodes, routes],
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Delete" || e.key === "Backspace") {
-        if (
-          document.activeElement instanceof HTMLInputElement ||
-          document.activeElement instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
 
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
         const state = useStore.getState();
         if (state.selectedNodeIds.length > 0) {
-          state.selectedNodeIds.forEach((id) => state.deleteNode(id));
+          const idsToDelete = [...state.selectedNodeIds];
+          idsToDelete.forEach((id) => state.deleteNode(id));
         }
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
@@ -78,6 +103,8 @@ export const Canvas = () => {
         x,
         y,
         layoutMap,
+        rowLayoutMap,
+        routes,
       );
       addNode(day, time, route);
       return;
@@ -110,28 +137,79 @@ export const Canvas = () => {
         x,
         y,
         layoutMap,
+        rowLayoutMap,
+        routes,
       );
 
+      const rowData = rowLayoutMap.rows[route];
       const colKey = `${day}-${time}`;
       const colData = layoutMap.columns[colKey];
-      let targetIndex = 0;
 
+      const nodesInCellCount = nodes.filter(
+        (n) =>
+          n.gridPosition.day === day &&
+          n.gridPosition.time === time &&
+          n.gridPosition.route === route,
+      ).length;
+
+      let targetBranch = 0;
+      if (rowData) {
+        const relativeY = y - rowData.startY;
+        targetBranch = Math.floor(relativeY / GRID_CONFIG.branchHeight);
+        if (targetBranch < 0) targetBranch = 0;
+      }
+
+      if (
+        nodesInCellCount > 1 &&
+        rowData &&
+        colData &&
+        y > rowData.startY + rowData.height - GRID_CONFIG.branchDropZoneHeight
+      ) {
+        setBranchDropTarget({
+          day,
+          time,
+          route,
+          y: rowData.startY + rowData.height,
+          x: colData.startX,
+          width: colData.width,
+        });
+      } else {
+        setBranchDropTarget(null);
+
+        if (rowData && targetBranch > rowData.maxBranch) {
+          targetBranch = rowData.maxBranch;
+        }
+      }
+
+      let targetIndex = 0;
       if (colData) {
         const relativeX = x - colData.startX;
-
         const slotWidth = GRID_CONFIG.nodeWidth + GRID_CONFIG.nodeGap;
         targetIndex = Math.floor(relativeX / slotWidth);
         if (targetIndex < 0) targetIndex = 0;
       }
 
-      moveNode(draggingId, day, time, route, targetIndex);
+      moveNode(draggingId, day, time, route, targetIndex, targetBranch);
     }
   };
 
   const handleMouseUp = () => {
+    if (draggingId && branchDropTarget) {
+      const newBranchIndex = createBranch(branchDropTarget.route);
+      moveNode(
+        draggingId,
+        branchDropTarget.day,
+        branchDropTarget.time,
+        branchDropTarget.route,
+        0,
+        newBranchIndex,
+      );
+    }
+
     setDraggingId(null);
     setConnectingSourceId(null);
     setTempLine(null);
+    setBranchDropTarget(null);
   };
 
   const handleConnectStart = (e: React.MouseEvent, id: string) => {
@@ -159,8 +237,7 @@ export const Canvas = () => {
   };
 
   const totalWidth = layoutMap.totalWidth;
-  const totalHeight =
-    GRID_CONFIG.headerHeight + ROUTES.length * GRID_CONFIG.rowHeight;
+  const totalHeight = rowLayoutMap.totalHeight;
 
   return (
     <div
@@ -238,6 +315,25 @@ export const Canvas = () => {
                 />
               ))}
             </div>
+
+            {branchDropTarget && (
+              <div
+                className="absolute z-40 flex items-center justify-center pointer-events-none animate-pulse"
+                style={{
+                  left: branchDropTarget.x,
+                  top: branchDropTarget.y - GRID_CONFIG.branchDropZoneHeight,
+                  width: branchDropTarget.width,
+                  height: GRID_CONFIG.branchDropZoneHeight,
+                  backgroundColor: "rgba(255, 255, 255, 0.5)",
+                  border: "2px dashed rgba(0, 0, 0, 0.5)",
+                }}
+              >
+                <div className="bg-black text-white px-3 py-1 rounded-full font-bold text-xs flex items-center gap-2 shadow-lg">
+                  <Plus className="w-4 h-4" />
+                  CREATE NEW BRANCH
+                </div>
+              </div>
+            )}
 
             {tempLine && (
               <svg className="pointer-events-none absolute left-0 top-0 z-50 h-full w-full">

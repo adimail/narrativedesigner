@@ -7,7 +7,7 @@ export const DAYS: DayEnum[] = Array.from(
 
 export const TIMES: TimeEnum[] = ["Morning", "Afternoon", "Evening", "Night"];
 
-export const ROUTES: RouteEnum[] = [
+export const DEFAULT_ROUTES: RouteEnum[] = [
   "Common",
   "Alyssa",
   "Rhea",
@@ -20,9 +20,11 @@ export const GRID_CONFIG = {
   nodeWidth: 240,
   nodeGap: 50,
   rowHeight: 250,
+  branchHeight: 200,
   headerHeight: 60,
   sidebarWidth: 120,
   nodeHeight: 180,
+  branchDropZoneHeight: 60,
 };
 
 export const COLORS = {
@@ -46,7 +48,7 @@ export const COLORS = {
 };
 
 export const ROUTE_COLORS: Record<
-  RouteEnum,
+  string,
   { light: string; dark: string; border: string }
 > = {
   Common: { light: "#e5e7eb", dark: "#374151", border: "#6b7280" },

@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useStore } from "../../store/useStore";
-import { getCoordinates, getColumnLayout } from "../../lib/utils";
+import { getCoordinates, getColumnLayout, getRowLayout } from "../../lib/utils";
 import {
   GRID_CONFIG,
   PIN_COLORS_DARK,
@@ -9,6 +9,7 @@ import {
 
 export const ConnectionLayer = () => {
   const nodes = useStore((state) => state.nodes);
+  const routes = useStore((state) => state.routes);
   const disconnectNodes = useStore((state) => state.disconnectNodes);
   const darkMode = useStore((state) => state.darkMode);
 
@@ -26,10 +27,18 @@ export const ConnectionLayer = () => {
     return node.sortIndex || 0;
   };
 
-  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
+  const layoutMap = useMemo(
+    () => getColumnLayout(nodes, routes),
+    [nodes, routes],
+  );
+
+  const rowLayoutMap = useMemo(
+    () => getRowLayout(nodes, routes),
+    [nodes, routes],
+  );
 
   const width = layoutMap.totalWidth;
-  const height = GRID_CONFIG.headerHeight + 5 * GRID_CONFIG.rowHeight;
+  const height = rowLayoutMap.totalHeight;
 
   const pinColors = darkMode ? PIN_COLORS_DARK : PIN_COLORS_LIGHT;
   const modeSuffix = darkMode ? "dark" : "light";
@@ -60,15 +69,19 @@ export const ConnectionLayer = () => {
           conn.source.gridPosition.day,
           conn.source.gridPosition.time,
           conn.source.gridPosition.route,
+          conn.source.branchIndex || 0,
           sourceStack,
           layoutMap,
+          rowLayoutMap,
         );
         const end = getCoordinates(
           conn.target.gridPosition.day,
           conn.target.gridPosition.time,
           conn.target.gridPosition.route,
+          conn.target.branchIndex || 0,
           targetStack,
           layoutMap,
+          rowLayoutMap,
         );
 
         const pinIndex = conn.source.nextScenarios.indexOf(

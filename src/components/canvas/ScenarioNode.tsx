@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { ScenarioNode as NodeType } from "../../types/schema";
-import { getCoordinates, getColumnLayout } from "../../lib/utils";
+import { getCoordinates, getColumnLayout, getRowLayout } from "../../lib/utils";
 import {
   GRID_CONFIG,
   PIN_COLORS_DARK,
@@ -27,6 +27,7 @@ export const ScenarioNode = ({
   const selectedNodeIds = useStore((state) => state.selectedNodeIds);
   const validationIssues = useStore((state) => state.validationIssues);
   const nodes = useStore((state) => state.nodes);
+  const routes = useStore((state) => state.routes);
   const darkMode = useStore((state) => state.darkMode);
 
   const isSelected = selectedNodeIds.includes(node.id);
@@ -36,14 +37,24 @@ export const ScenarioNode = ({
 
   const stackIndex = node.sortIndex || 0;
 
-  const layoutMap = useMemo(() => getColumnLayout(nodes), [nodes]);
+  const layoutMap = useMemo(
+    () => getColumnLayout(nodes, routes),
+    [nodes, routes],
+  );
+
+  const rowLayoutMap = useMemo(
+    () => getRowLayout(nodes, routes),
+    [nodes, routes],
+  );
 
   const coords = getCoordinates(
     node.gridPosition.day,
     node.gridPosition.time,
     node.gridPosition.route,
+    node.branchIndex || 0,
     stackIndex,
     layoutMap,
+    rowLayoutMap,
   );
 
   const pinSpacing = 24;
