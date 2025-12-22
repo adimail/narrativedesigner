@@ -275,3 +275,7 @@ export const useStore = create<StoreState>()(
     },
   ),
 );
+
+if (typeof window !== "undefined") {
+  (window as any).useStore = useStore;
+}
