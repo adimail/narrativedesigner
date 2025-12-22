@@ -1,67 +1,58 @@
-export type DayEnum =
-  | "Day1"
-  | "Day2"
-  | "Day3"
-  | "Day4"
-  | "Day5"
-  | "Day6"
-  | "Day7"
-  | "Day8"
-  | "Day9"
-  | "Day10"
-  | "Day11"
-  | "Day12"
-  | "Day13"
-  | "Day14"
-  | "Day15"
-  | "Day16"
-  | "Day17"
-  | "Day18"
-  | "Day19"
-  | "Day20"
-  | "Day21"
-  | "Day22"
-  | "Day23"
-  | "Day24"
-  | "Day25"
-  | "Day26"
-  | "Day27"
-  | "Day28";
+import { z } from "zod";
 
-export type TimeEnum = "Morning" | "Afternoon" | "Evening" | "Night";
+export type ScenarioId = string & { readonly _brand: "ScenarioId" };
+
+export const ScenarioIdSchema = z
+  .string()
+  .transform((val) => val as ScenarioId);
+
+export type Day = number;
+export type Time = number;
 
 export type RouteEnum = "Common" | "Alyssa" | "Rhea" | "Natalie" | "OtherQuest";
 
-export interface LoadInfo {
-  immediately: boolean;
-  afterScenario: string;
-  atDay: DayEnum;
-  atTime: TimeEnum;
-}
+export const RouteEnumSchema = z.enum([
+  "Common",
+  "Alyssa",
+  "Rhea",
+  "Natalie",
+  "OtherQuest",
+]);
 
-export interface EndInfo {
-  immediately: boolean;
-  afterScenario: string;
-  atDay: DayEnum;
-  atTime: TimeEnum;
-}
+export const LoadInfoSchema = z.object({
+  immediately: z.boolean(),
+  afterScenario: ScenarioIdSchema.nullable(),
+  atDay: z.number().min(0).max(27),
+  atTime: z.number().min(0).max(3),
+});
 
-export interface ScenarioNode {
-  id: string;
-  scenarioId: string;
-  sortIndex: number;
-  branchIndex?: number;
-  description?: string;
-  gridPosition: {
-    day: DayEnum;
-    time: TimeEnum;
-    route: RouteEnum;
-  };
-  loadInfo: LoadInfo;
-  endInfo: EndInfo;
-  nextScenarios: string[];
-  previousScenarios: string[];
-}
+export const EndInfoSchema = z.object({
+  immediately: z.boolean(),
+  afterScenario: ScenarioIdSchema.nullable(),
+  atDay: z.number().min(0).max(27),
+  atTime: z.number().min(0).max(3),
+});
+
+export const ScenarioNodeSchema = z.object({
+  id: z.string().uuid(),
+  scenarioId: ScenarioIdSchema,
+  sortIndex: z.number(),
+  branchIndex: z.number().optional(),
+  description: z.string().optional(),
+  gridPosition: z.object({
+    day: z.number().min(0).max(27),
+    time: z.number().min(0).max(3),
+    route: RouteEnumSchema,
+  }),
+  loadInfo: LoadInfoSchema,
+  endInfo: EndInfoSchema,
+  nextScenarios: z.array(ScenarioIdSchema),
+  previousScenarios: z.array(ScenarioIdSchema),
+});
+
+export type LoadInfo = z.infer<typeof LoadInfoSchema>;
+export type EndInfo = z.infer<typeof EndInfoSchema>;
+export type ScenarioNode = z.infer<typeof ScenarioNodeSchema>;
 
 export interface ValidationIssue {
   nodeId: string;

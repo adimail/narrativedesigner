@@ -1,8 +1,20 @@
-import { Download, Upload, Moon, Sun, Trash2, Save } from "lucide-react";
+import {
+  Download,
+  Upload,
+  Moon,
+  Sun,
+  Trash2,
+  Save,
+  Undo2,
+  Redo2,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { useStore } from "../../store/useStore";
-import { ScenarioNode } from "../../types/schema";
+import { ScenarioNodeSchema } from "../../types/schema";
 import { cn } from "../../lib/utils";
+import { DAYS, TIMES } from "../../lib/constants";
+import { downloadJson } from "../../lib/file-system";
+import { z } from "zod";
 
 export const Toolbar = () => {
   const nodes = useStore((state) => state.nodes);
@@ -12,16 +24,11 @@ export const Toolbar = () => {
   const toggleDarkMode = useStore((state) => state.toggleDarkMode);
   const clearAll = useStore((state) => state.clearAll);
 
+  const undo = () => useStore.temporal.getState().undo();
+  const redo = () => useStore.temporal.getState().redo();
+
   const handleSaveProject = () => {
-    const dataStr =
-      "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(nodes, null, 2));
-    const downloadAnchorNode = document.createElement("a");
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "project.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    downloadJson(nodes, "project.json");
   };
 
   const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,14 +39,26 @@ export const Toolbar = () => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (Array.isArray(json)) {
-          loadProject(json as ScenarioNode[]);
+        const result = z.array(ScenarioNodeSchema).safeParse(json);
+
+        if (result.success) {
+          loadProject(result.data);
         } else {
-          alert("Invalid Project JSON format");
+          const errorMessages = result.error.issues
+            .map((err) => `${err.path.join(".")}: ${err.message}`)
+            .slice(0, 3)
+            .join("\n");
+
+          alert(
+            `Invalid Project Data:\n${errorMessages}${
+              result.error.issues.length > 3 ? "\n..." : ""
+            }`,
+          );
         }
       } catch (err) {
-        console.error(err);
-        alert("Error parsing JSON");
+        alert("Error parsing JSON file");
+      } finally {
+        e.target.value = "";
       }
     };
     reader.readAsText(file);
@@ -56,27 +75,19 @@ export const Toolbar = () => {
       },
       LoadInfo: {
         Immediately: node.loadInfo.immediately,
-        AfterScenario: node.loadInfo.afterScenario,
-        AtDay: node.loadInfo.atDay,
-        AtTime: node.loadInfo.atTime,
+        AfterScenario: node.loadInfo.afterScenario ?? "None",
+        AtDay: DAYS[node.loadInfo.atDay],
+        AtTime: TIMES[node.loadInfo.atTime],
       },
       EndInfo: {
         Immediately: node.endInfo.immediately,
-        AfterScenario: node.endInfo.afterScenario,
-        AtDay: node.endInfo.atDay,
-        AtTime: node.endInfo.atTime,
+        AfterScenario: node.endInfo.afterScenario ?? "None",
+        AtDay: DAYS[node.endInfo.atDay],
+        AtTime: TIMES[node.endInfo.atTime],
       },
     }));
 
-    const dataStr =
-      "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(exportData, null, 2));
-    const downloadAnchorNode = document.createElement("a");
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "scenarios_export.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    downloadJson(exportData, "scenarios_export.json");
   };
 
   const handleClear = () => {
@@ -115,7 +126,16 @@ export const Toolbar = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={undo}>
+          <Undo2 className="w-5 h-5" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={redo}>
+          <Redo2 className="w-5 h-5" />
+        </Button>
+
+        <div className="h-8 w-px bg-gray-300 mx-2" />
+
         <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
           {darkMode ? (
             <Sun className="w-5 h-5" />

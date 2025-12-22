@@ -1,14 +1,15 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { ScenarioNode as NodeType } from "../../types/schema";
-import { getCoordinates, getColumnLayout, getRowLayout } from "../../lib/utils";
+import { getCoordinates, cn } from "../../lib/utils";
 import {
   GRID_CONFIG,
   PIN_COLORS_DARK,
   PIN_COLORS_LIGHT,
   ROUTE_COLORS,
+  DAYS,
+  TIMES,
 } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
-import { cn } from "../../lib/utils";
 import { AlertTriangle, XCircle } from "lucide-react";
 
 interface Props {
@@ -28,51 +29,32 @@ export const ScenarioNode = ({
 }: Props) => {
   const selectedNodeIds = useStore((state) => state.selectedNodeIds);
   const validationIssues = useStore((state) => state.validationIssues);
-  const nodes = useStore((state) => state.nodes);
-  const routes = useStore((state) => state.routes);
+  const layoutMap = useStore((state) => state.layoutMap);
+  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const darkMode = useStore((state) => state.darkMode);
-
   const [hoverSide, setHoverSide] = useState<"left" | "right">("right");
-
   const isSelected = selectedNodeIds.includes(node.id);
   const issues = validationIssues.filter((i) => i.nodeId === node.id);
   const hasError = issues.some((i) => i.type === "error");
   const hasWarning = issues.some((i) => i.type === "warning");
-
-  const stackIndex = node.sortIndex || 0;
-
-  const layoutMap = useMemo(
-    () => getColumnLayout(nodes, routes),
-    [nodes, routes],
-  );
-
-  const rowLayoutMap = useMemo(
-    () => getRowLayout(nodes, routes),
-    [nodes, routes],
-  );
-
   const coords = getCoordinates(
     node.gridPosition.day,
     node.gridPosition.time,
     node.gridPosition.route,
     node.branchIndex || 0,
-    stackIndex,
+    node.sortIndex || 0,
     layoutMap,
     rowLayoutMap,
   );
-
   const pinSpacing = 24;
   const totalPins = node.nextScenarios.length;
   const startPinY =
     GRID_CONFIG.nodeHeight / 2 - ((totalPins - 1) * pinSpacing) / 2;
-
   const pinColors = darkMode ? PIN_COLORS_DARK : PIN_COLORS_LIGHT;
-
   const routeColor =
     ROUTE_COLORS[node.gridPosition.route] || ROUTE_COLORS.Common;
   const bgColor = darkMode ? routeColor.dark : routeColor.light;
   const borderColor = routeColor.border;
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isConnecting) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -80,7 +62,6 @@ export const ScenarioNode = ({
       setHoverSide(x < rect.width / 2 ? "left" : "right");
     }
   };
-
   return (
     <div
       className={cn(
@@ -129,7 +110,6 @@ export const ScenarioNode = ({
           {hasWarning && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
         </div>
       </div>
-
       <div className="flex flex-col flex-1 overflow-hidden">
         <div
           className={cn(
@@ -148,13 +128,12 @@ export const ScenarioNode = ({
             {!node.loadInfo.immediately && (
               <div className="mt-1 pl-1 border-l-2 border-current/30">
                 <div className="truncate opacity-80">
-                  {node.loadInfo.afterScenario}
+                  {node.loadInfo.afterScenario || "None"}
                 </div>
               </div>
             )}
           </div>
         </div>
-
         <div className="flex-1 p-2 bg-black/5">
           <div className="text-[9px] font-bold opacity-70 mb-1">END INFO</div>
           <div className="text-[10px] leading-tight">
@@ -165,20 +144,19 @@ export const ScenarioNode = ({
               </span>
             </div>
             <div className="flex justify-between mt-0.5 text-[9px] opacity-80">
-              <span>{node.endInfo.atDay}</span>
-              <span>{node.endInfo.atTime}</span>
+              <span>{DAYS[node.endInfo.atDay]}</span>
+              <span>{TIMES[node.endInfo.atTime]}</span>
             </div>
             {!node.endInfo.immediately && (
               <div className="mt-1 pl-1 border-l-2 border-current/30">
                 <div className="truncate opacity-80">
-                  {node.endInfo.afterScenario}
+                  {node.endInfo.afterScenario || "None"}
                 </div>
               </div>
             )}
           </div>
         </div>
       </div>
-
       {node.nextScenarios.map((_, index) => {
         const color = pinColors[index % pinColors.length];
         return (
@@ -192,7 +170,6 @@ export const ScenarioNode = ({
           />
         );
       })}
-
       <div
         className={cn(
           "absolute top-1/2 -translate-y-1/2 w-5 h-5 border-2 cursor-crosshair opacity-0 group-hover:opacity-100 flex items-center justify-center hover:scale-110 transition-none z-50 shadow-sm",
