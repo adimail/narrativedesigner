@@ -1,66 +1,39 @@
-export type DayEnum =
-  | "Day1"
-  | "Day2"
-  | "Day3"
-  | "Day4"
-  | "Day5"
-  | "Day6"
-  | "Day7"
-  | "Day8"
-  | "Day9"
-  | "Day10"
-  | "Day11"
-  | "Day12"
-  | "Day13"
-  | "Day14"
-  | "Day15"
-  | "Day16"
-  | "Day17"
-  | "Day18"
-  | "Day19"
-  | "Day20"
-  | "Day21"
-  | "Day22"
-  | "Day23"
-  | "Day24"
-  | "Day25"
-  | "Day26"
-  | "Day27"
-  | "Day28";
+export type ScenarioId = string & { readonly _brand: "ScenarioId" };
 
-export type TimeEnum = "Morning" | "Afternoon" | "Evening" | "Night";
+export type Day = number;
+export type Time = number;
 
 export type RouteEnum = "Common" | "Alyssa" | "Rhea" | "Natalie" | "OtherQuest";
 
 export interface LoadInfo {
   immediately: boolean;
-  afterScenario: string;
-  atDay: DayEnum;
-  atTime: TimeEnum;
+  afterScenario: ScenarioId | null;
+  atDay: Day;
+  atTime: Time;
 }
 
 export interface EndInfo {
   immediately: boolean;
-  afterScenario: string;
-  atDay: DayEnum;
-  atTime: TimeEnum;
+  afterScenario: ScenarioId | null;
+  atDay: Day;
+  atTime: Time;
 }
 
 export interface ScenarioNode {
   id: string;
-  scenarioId: string;
+  scenarioId: ScenarioId;
   sortIndex: number;
   branchIndex?: number;
   description?: string;
   gridPosition: {
-    day: DayEnum;
-    time: TimeEnum;
+    day: Day;
+    time: Time;
     route: RouteEnum;
   };
   loadInfo: LoadInfo;
   endInfo: EndInfo;
-  nextScenarios: string[];
-  previousScenarios: string[];
+  nextScenarios: ScenarioId[];
+  previousScenarios: ScenarioId[];
 }
 
 export interface ValidationIssue {

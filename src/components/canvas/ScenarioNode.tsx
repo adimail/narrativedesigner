@@ -6,6 +6,8 @@ import {
   PIN_COLORS_DARK,
   PIN_COLORS_LIGHT,
   ROUTE_COLORS,
+  DAYS,
+  TIMES,
 } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
 import { AlertTriangle, XCircle } from "lucide-react";
@@ -30,14 +32,11 @@ export const ScenarioNode = ({
   const layoutMap = useStore((state) => state.layoutMap);
   const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const darkMode = useStore((state) => state.darkMode);
-
   const [hoverSide, setHoverSide] = useState<"left" | "right">("right");
-
   const isSelected = selectedNodeIds.includes(node.id);
   const issues = validationIssues.filter((i) => i.nodeId === node.id);
   const hasError = issues.some((i) => i.type === "error");
   const hasWarning = issues.some((i) => i.type === "warning");
-
   const coords = getCoordinates(
     node.gridPosition.day,
     node.gridPosition.time,
@@ -47,7 +46,6 @@ export const ScenarioNode = ({
     layoutMap,
     rowLayoutMap,
   );
-
   const pinSpacing = 24;
   const totalPins = node.nextScenarios.length;
   const startPinY =
@@ -57,7 +55,6 @@ export const ScenarioNode = ({
     ROUTE_COLORS[node.gridPosition.route] || ROUTE_COLORS.Common;
   const bgColor = darkMode ? routeColor.dark : routeColor.light;
   const borderColor = routeColor.border;
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isConnecting) {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -65,7 +62,6 @@ export const ScenarioNode = ({
       setHoverSide(x < rect.width / 2 ? "left" : "right");
     }
   };
-
   return (
     <div
       className={cn(
@@ -132,7 +128,7 @@ export const ScenarioNode = ({
             {!node.loadInfo.immediately && (
               <div className="mt-1 pl-1 border-l-2 border-current/30">
                 <div className="truncate opacity-80">
-                  {node.loadInfo.afterScenario}
+                  {node.loadInfo.afterScenario || "None"}
                 </div>
               </div>
             )}
@@ -148,13 +144,13 @@ export const ScenarioNode = ({
               </span>
             </div>
             <div className="flex justify-between mt-0.5 text-[9px] opacity-80">
-              <span>{node.endInfo.atDay}</span>
-              <span>{node.endInfo.atTime}</span>
+              <span>{DAYS[node.endInfo.atDay]}</span>
+              <span>{TIMES[node.endInfo.atTime]}</span>
             </div>
             {!node.endInfo.immediately && (
               <div className="mt-1 pl-1 border-l-2 border-current/30">
                 <div className="truncate opacity-80">
-                  {node.endInfo.afterScenario}
+                  {node.endInfo.afterScenario || "None"}
                 </div>
               </div>
             )}

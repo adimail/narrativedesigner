@@ -1,11 +1,11 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { DAYS, TIMES, GRID_CONFIG } from "./constants";
+import { GRID_CONFIG } from "./constants";
 import {
-  DayEnum,
+  Day,
   RouteEnum,
   ScenarioNode,
-  TimeEnum,
+  Time,
   ValidationIssue,
 } from "../types/schema";
 
@@ -17,41 +17,33 @@ export function getColumnLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
   const columnLayout: Record<string, { startX: number; width: number }> = {};
   let currentX = GRID_CONFIG.sidebarWidth;
 
-  DAYS.forEach((day) => {
-    TIMES.forEach((time) => {
+  for (let d = 0; d < 28; d++) {
+    for (let t = 0; t < 4; t++) {
       let maxNodesInSlot = 0;
-
       routes.forEach((route) => {
         const cellNodes = nodes.filter(
           (n) =>
-            n.gridPosition.day === day &&
-            n.gridPosition.time === time &&
+            n.gridPosition.day === d &&
+            n.gridPosition.time === t &&
             n.gridPosition.route === route,
         );
-
         const branchCounts: Record<number, number> = {};
         cellNodes.forEach((n) => {
           const bIdx = n.branchIndex || 0;
           branchCounts[bIdx] = (branchCounts[bIdx] || 0) + 1;
         });
-
         const maxInAnyBranch = Math.max(0, ...Object.values(branchCounts));
-
         if (maxInAnyBranch > maxNodesInSlot) maxNodesInSlot = maxInAnyBranch;
       });
-
       const effectiveCount = Math.max(1, maxNodesInSlot);
       const requiredWidth =
         effectiveCount * GRID_CONFIG.nodeWidth +
         (effectiveCount + 1) * GRID_CONFIG.nodeGap;
-
       const width = Math.max(GRID_CONFIG.minColWidth, requiredWidth);
-
-      columnLayout[`${day}-${time}`] = { startX: currentX, width };
+      columnLayout[`${d}-${t}`] = { startX: currentX, width };
       currentX += width;
-    });
-  });
-
+    }
+  }
   return { columns: columnLayout, totalWidth: currentX };
 }
 
@@ -61,26 +53,22 @@ export function getRowLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
     { startY: number; height: number; maxBranch: number }
   > = {};
   let currentY = GRID_CONFIG.headerHeight;
-
   routes.forEach((route) => {
     const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
     const maxBranch = routeNodes.reduce(
       (max, n) => Math.max(max, n.branchIndex || 0),
       0,
     );
-
     const height = GRID_CONFIG.rowHeight + maxBranch * GRID_CONFIG.branchHeight;
-
     rowLayout[route] = { startY: currentY, height, maxBranch };
     currentY += height;
   });
-
   return { rows: rowLayout, totalHeight: currentY };
 }
 
 export function getCoordinates(
-  day: DayEnum,
-  time: TimeEnum,
+  day: Day,
+  time: Time,
   route: RouteEnum,
   branchIndex: number = 0,
   indexInSlot: number = 0,
@@ -89,10 +77,8 @@ export function getCoordinates(
 ) {
   let x = 0;
   let y = 0;
-
   if (rowLayoutMap && rowLayoutMap.rows[route]) {
     const rowData = rowLayoutMap.rows[route];
-
     y =
       rowData.startY +
       branchIndex * GRID_CONFIG.branchHeight +
@@ -100,7 +86,6 @@ export function getCoordinates(
   } else {
     y = GRID_CONFIG.headerHeight + 20;
   }
-
   if (layoutMap) {
     const colKey = `${day}-${time}`;
     const colData = layoutMap.columns[colKey];
@@ -111,15 +96,12 @@ export function getCoordinates(
         indexInSlot * (GRID_CONFIG.nodeWidth + GRID_CONFIG.nodeGap);
     }
   } else {
-    const dayIndex = DAYS.indexOf(day);
-    const timeIndex = TIMES.indexOf(time);
-    const globalColIndex = dayIndex * 4 + timeIndex;
+    const globalColIndex = day * 4 + time;
     x =
       GRID_CONFIG.sidebarWidth +
       globalColIndex * GRID_CONFIG.minColWidth +
       GRID_CONFIG.nodeGap;
   }
-
   return { x, y };
 }
 
@@ -131,9 +113,8 @@ export function getGridPositionFromCoordinates(
   routes: RouteEnum[],
 ) {
   let foundRoute = routes[0];
-  let foundDay = DAYS[0];
-  let foundTime = TIMES[0];
-
+  let foundDay = 0;
+  let foundTime = 0;
   for (const route of routes) {
     const rowData = rowLayoutMap.rows[route];
     if (y >= rowData.startY && y < rowData.startY + rowData.height) {
@@ -141,7 +122,6 @@ export function getGridPositionFromCoordinates(
       break;
     }
   }
-
   const lastRoute = routes[routes.length - 1];
   if (
     y >=
@@ -149,34 +129,18 @@ export function getGridPositionFromCoordinates(
   ) {
     foundRoute = lastRoute;
   }
-
-  for (const day of DAYS) {
-    for (const time of TIMES) {
-      const key = `${day}-${time}`;
+  for (let d = 0; d < 28; d++) {
+    for (let t = 0; t < 4; t++) {
+      const key = `${d}-${t}`;
       const col = layoutMap.columns[key];
       if (x >= col.startX && x < col.startX + col.width) {
-        foundDay = day;
-        foundTime = time;
+        foundDay = d;
+        foundTime = t;
         break;
       }
     }
   }
-
-  const lastDay = DAYS[DAYS.length - 1];
-  const lastTime = TIMES[TIMES.length - 1];
-  const lastKey = `${lastDay}-${lastTime}`;
-  const lastCol = layoutMap.columns[lastKey];
-
-  if (x >= lastCol.startX + lastCol.width) {
-    foundDay = lastDay;
-    foundTime = lastTime;
-  }
-
-  return {
-    day: foundDay,
-    time: foundTime,
-    route: foundRoute,
-  };
+  return { day: foundDay, time: foundTime, route: foundRoute };
 }
 
 export function validateNode(
@@ -184,10 +148,7 @@ export function validateNode(
   nodeMap: Map<string, ScenarioNode>,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  const dayIndex = DAYS.indexOf(node.gridPosition.day);
-  const timeIndex = TIMES.indexOf(node.gridPosition.time);
-  const globalTimeIndex = dayIndex * 4 + timeIndex;
-
+  const globalTimeIndex = node.gridPosition.day * 4 + node.gridPosition.time;
   if (!node.scenarioId || node.scenarioId.trim() === "") {
     issues.push({
       nodeId: node.id,
@@ -195,7 +156,6 @@ export function validateNode(
       message: "Missing Scenario ID",
     });
   }
-
   const existing = nodeMap.get(node.scenarioId);
   if (existing && existing.id !== node.id) {
     issues.push({
@@ -204,7 +164,6 @@ export function validateNode(
       message: "Duplicate Scenario ID",
     });
   }
-
   node.nextScenarios.forEach((nextId) => {
     const targetNode = nodeMap.get(nextId);
     if (!targetNode) {
@@ -215,11 +174,8 @@ export function validateNode(
       });
       return;
     }
-
-    const targetDayIndex = DAYS.indexOf(targetNode.gridPosition.day);
-    const targetTimeIndex = TIMES.indexOf(targetNode.gridPosition.time);
-    const targetGlobalTimeIndex = targetDayIndex * 4 + targetTimeIndex;
-
+    const targetGlobalTimeIndex =
+      targetNode.gridPosition.day * 4 + targetNode.gridPosition.time;
     if (targetGlobalTimeIndex < globalTimeIndex) {
       issues.push({
         nodeId: node.id,
@@ -228,6 +184,5 @@ export function validateNode(
       });
     }
   });
-
   return issues;
 }

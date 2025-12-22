@@ -3,6 +3,7 @@ import { Button } from "../ui/button";
 import { useStore } from "../../store/useStore";
 import { ScenarioNode } from "../../types/schema";
 import { cn } from "../../lib/utils";
+import { DAYS, TIMES } from "../../lib/constants";
 
 export const Toolbar = () => {
   const nodes = useStore((state) => state.nodes);
@@ -56,15 +57,15 @@ export const Toolbar = () => {
       },
       LoadInfo: {
         Immediately: node.loadInfo.immediately,
-        AfterScenario: node.loadInfo.afterScenario,
-        AtDay: node.loadInfo.atDay,
-        AtTime: node.loadInfo.atTime,
+        AfterScenario: node.loadInfo.afterScenario ?? "None",
+        AtDay: DAYS[node.loadInfo.atDay],
+        AtTime: TIMES[node.loadInfo.atTime],
       },
       EndInfo: {
         Immediately: node.endInfo.immediately,
-        AfterScenario: node.endInfo.afterScenario,
-        AtDay: node.endInfo.atDay,
-        AtTime: node.endInfo.atTime,
+        AfterScenario: node.endInfo.afterScenario ?? "None",
+        AtDay: DAYS[node.endInfo.atDay],
+        AtTime: TIMES[node.endInfo.atTime],
       },
     }));
 

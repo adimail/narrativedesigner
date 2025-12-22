@@ -5,6 +5,7 @@ import { Button } from "../ui/button";
 import { DAYS, TIMES } from "../../lib/constants";
 import { Trash2, ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { ScenarioId } from "../../types/schema";
 
 export const PropertiesPanel = () => {
   const selectedNodeIds = useStore((state) => state.selectedNodeIds);
@@ -46,7 +47,6 @@ export const PropertiesPanel = () => {
         </div>
       );
     }
-
     if (selectedNodeIds.length > 1) {
       return (
         <div className="p-6 text-gray-500 text-sm text-center font-mono">
@@ -54,10 +54,8 @@ export const PropertiesPanel = () => {
         </div>
       );
     }
-
     const node = nodes.find((n) => n.id === selectedNodeIds[0]);
     if (!node) return null;
-
     const availableScenarios = nodes
       .filter((n) => n.id !== node.id)
       .map((n) => n.scenarioId)
@@ -70,14 +68,13 @@ export const PropertiesPanel = () => {
           <Input
             value={node.scenarioId}
             onChange={(e) =>
-              updateNode(node.id, { scenarioId: e.target.value })
+              updateNode(node.id, { scenarioId: e.target.value as ScenarioId })
             }
             className={
               darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
             }
           />
         </div>
-
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase">
             Description (Internal)
@@ -96,8 +93,6 @@ export const PropertiesPanel = () => {
             }
           />
         </div>
-
-        {/* LOAD CONFIG */}
         <div
           className={cn(
             "space-y-4 border-t-2 border-dashed pt-4",
@@ -112,7 +107,6 @@ export const PropertiesPanel = () => {
           >
             LOAD_CONFIG
           </h3>
-
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -134,19 +128,18 @@ export const PropertiesPanel = () => {
               IMMEDIATE
             </label>
           </div>
-
           {!node.loadInfo.immediately && (
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase">
                 After Scenario
               </label>
               <Select
-                value={node.loadInfo.afterScenario}
+                value={node.loadInfo.afterScenario || ""}
                 onChange={(e) =>
                   updateNode(node.id, {
                     loadInfo: {
                       ...node.loadInfo,
-                      afterScenario: e.target.value,
+                      afterScenario: (e.target.value as ScenarioId) || null,
                     },
                   })
                 }
@@ -154,7 +147,7 @@ export const PropertiesPanel = () => {
                   darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
                 }
               >
-                <option value="None">None</option>
+                <option value="">None</option>
                 {availableScenarios.map((id) => (
                   <option key={id} value={id}>
                     {id}
@@ -163,7 +156,6 @@ export const PropertiesPanel = () => {
               </Select>
             </div>
           )}
-
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs font-bold uppercase">At Day</label>
@@ -177,8 +169,8 @@ export const PropertiesPanel = () => {
                     : "bg-gray-100",
                 )}
               >
-                {DAYS.map((d) => (
-                  <option key={d} value={d}>
+                {DAYS.map((d, i) => (
+                  <option key={i} value={i}>
                     {d}
                   </option>
                 ))}
@@ -196,8 +188,8 @@ export const PropertiesPanel = () => {
                     : "bg-gray-100",
                 )}
               >
-                {TIMES.map((t) => (
-                  <option key={t} value={t}>
+                {TIMES.map((t, i) => (
+                  <option key={i} value={i}>
                     {t}
                   </option>
                 ))}
@@ -205,8 +197,6 @@ export const PropertiesPanel = () => {
             </div>
           </div>
         </div>
-
-        {/* END CONFIG */}
         <div
           className={cn(
             "space-y-4 border-t-2 border-dashed pt-4",
@@ -221,7 +211,6 @@ export const PropertiesPanel = () => {
           >
             END_CONFIG
           </h3>
-
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -243,24 +232,26 @@ export const PropertiesPanel = () => {
               IMMEDIATE
             </label>
           </div>
-
           {!node.endInfo.immediately && (
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase">
                 After Scenario
               </label>
               <Select
-                value={node.endInfo.afterScenario}
+                value={node.endInfo.afterScenario || ""}
                 onChange={(e) =>
                   updateNode(node.id, {
-                    endInfo: { ...node.endInfo, afterScenario: e.target.value },
+                    endInfo: {
+                      ...node.endInfo,
+                      afterScenario: (e.target.value as ScenarioId) || null,
+                    },
                   })
                 }
                 className={
                   darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
                 }
               >
-                <option value="None">None</option>
+                <option value="">None</option>
                 {availableScenarios.map((id) => (
                   <option key={id} value={id}>
                     {id}
@@ -269,7 +260,6 @@ export const PropertiesPanel = () => {
               </Select>
             </div>
           )}
-
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs font-bold uppercase">At Day</label>
@@ -277,15 +267,18 @@ export const PropertiesPanel = () => {
                 value={node.endInfo.atDay}
                 onChange={(e) =>
                   updateNode(node.id, {
-                    endInfo: { ...node.endInfo, atDay: e.target.value as any },
+                    endInfo: {
+                      ...node.endInfo,
+                      atDay: parseInt(e.target.value),
+                    },
                   })
                 }
                 className={
                   darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
                 }
               >
-                {DAYS.map((d) => (
-                  <option key={d} value={d}>
+                {DAYS.map((d, i) => (
+                  <option key={i} value={i}>
                     {d}
                   </option>
                 ))}
@@ -297,15 +290,18 @@ export const PropertiesPanel = () => {
                 value={node.endInfo.atTime}
                 onChange={(e) =>
                   updateNode(node.id, {
-                    endInfo: { ...node.endInfo, atTime: e.target.value as any },
+                    endInfo: {
+                      ...node.endInfo,
+                      atTime: parseInt(e.target.value),
+                    },
                   })
                 }
                 className={
                   darkMode ? "bg-slate-700 border-slate-500 text-white" : ""
                 }
               >
-                {TIMES.map((t) => (
-                  <option key={t} value={t}>
+                {TIMES.map((t, i) => (
+                  <option key={i} value={i}>
                     {t}
                   </option>
                 ))}
@@ -313,7 +309,6 @@ export const PropertiesPanel = () => {
             </div>
           </div>
         </div>
-
         <div
           className={cn(
             "space-y-4 border-t-2 border-dashed pt-4",
@@ -358,7 +353,6 @@ export const PropertiesPanel = () => {
             })}
           </div>
         </div>
-
         <div className="pt-6 mt-auto">
           <Button
             variant="destructive"

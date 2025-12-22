@@ -9,7 +9,7 @@ import { GRID_CONFIG } from "../../lib/constants";
 import { Button } from "../ui/button";
 import { Play, Plus } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { DayEnum, TimeEnum, RouteEnum } from "../../types/schema";
+import { Day, Time, RouteEnum } from "../../types/schema";
 
 export const Canvas = () => {
   const nodes = useStore((state) => state.nodes);
@@ -28,7 +28,6 @@ export const Canvas = () => {
   const draggingId = useStore((state) => state.draggingId);
   const loadSampleData = useStore((state) => state.loadSampleData);
   const darkMode = useStore((state) => state.darkMode);
-
   const [connectingSourceId, setConnectingSourceId] = useState<string | null>(
     null,
   );
@@ -39,16 +38,14 @@ export const Canvas = () => {
     y2: number;
   } | null>(null);
   const [branchDropTarget, setBranchDropTarget] = useState<{
-    day: DayEnum;
-    time: TimeEnum;
+    day: Day;
+    time: Time;
     route: RouteEnum;
     y: number;
     x: number;
     width: number;
   } | null>(null);
-
   const wrapperRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -70,7 +67,6 @@ export const Canvas = () => {
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
-
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (e.button === 0) {
@@ -78,7 +74,6 @@ export const Canvas = () => {
       setDraggingId(id);
     }
   };
-
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (e.shiftKey && wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
@@ -97,7 +92,6 @@ export const Canvas = () => {
     }
     if (e.target === e.currentTarget) clearSelection();
   };
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (connectingSourceId && wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
@@ -162,7 +156,6 @@ export const Canvas = () => {
       moveNode(draggingId, day, time, route, targetIndex, targetBranch);
     }
   };
-
   const handleMouseUp = () => {
     if (draggingId && branchDropTarget) {
       const newBranchIndex = createBranch(branchDropTarget.route);
@@ -180,7 +173,6 @@ export const Canvas = () => {
     setTempLine(null);
     setBranchDropTarget(null);
   };
-
   const handleConnectStart = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const rect = wrapperRef.current!.getBoundingClientRect();
@@ -190,7 +182,6 @@ export const Canvas = () => {
     setConnectingSourceId(id);
     setTempLine({ x1: x, y1: y, x2: x, y2: y });
   };
-
   const handleConnectEnd = (e: React.MouseEvent, targetId: string) => {
     if (connectingSourceId && connectingSourceId !== targetId)
       connectNodes(connectingSourceId, targetId);
@@ -198,9 +189,7 @@ export const Canvas = () => {
     setTempLine(null);
     setDraggingId(null);
   };
-
   const handleContextMenu = (e: React.MouseEvent) => e.preventDefault();
-
   return (
     <div
       className={cn(

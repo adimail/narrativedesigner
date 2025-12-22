@@ -29,9 +29,9 @@ export const GridBackground = () => {
           />
         );
       })}
-      {DAYS.map((day) =>
-        TIMES.map((time) => {
-          const key = `${day}-${time}`;
+      {Array.from({ length: 28 }).map((_, d) =>
+        Array.from({ length: 4 }).map((_, t) => {
+          const key = `${d}-${t}`;
           const col = layoutMap.columns[key];
           return (
             <div
@@ -42,8 +42,8 @@ export const GridBackground = () => {
                 width: col.width,
                 top: 0,
                 backgroundColor: darkMode
-                  ? COLORS.timeSlotsDark[time]
-                  : COLORS.timeSlots[time],
+                  ? COLORS.timeSlotsDark[t]
+                  : COLORS.timeSlots[t],
                 borderColor: darkMode ? "#475569" : COLORS.gridLine,
                 opacity: darkMode ? 0.4 : 0.5,
               }}
@@ -51,15 +51,15 @@ export const GridBackground = () => {
           );
         }),
       )}
-      {DAYS.map((day) => {
-        const startKey = `${day}-Morning`;
-        const endKey = `${day}-Night`;
+      {DAYS.map((day, d) => {
+        const startKey = `${d}-0`;
+        const endKey = `${d}-3`;
         const startCol = layoutMap.columns[startKey];
         const endCol = layoutMap.columns[endKey];
         const dayWidth = endCol.startX + endCol.width - startCol.startX;
         return (
           <div
-            key={day}
+            key={d}
             className={cn(
               "absolute border-r border-b flex items-center justify-center text-sm font-bold z-10 transition-all duration-300 ease-in-out",
               darkMode
@@ -77,13 +77,13 @@ export const GridBackground = () => {
           </div>
         );
       })}
-      {DAYS.map((day) =>
-        TIMES.map((time) => {
-          const key = `${day}-${time}`;
+      {Array.from({ length: 28 }).map((_, d) =>
+        TIMES.map((time, t) => {
+          const key = `${d}-${t}`;
           const col = layoutMap.columns[key];
           return (
             <div
-              key={`${day}-header-${time}`}
+              key={`${d}-header-${t}`}
               className={cn(
                 "absolute border-r border-b flex items-center justify-center text-xs font-bold z-10 transition-all duration-300 ease-in-out",
                 darkMode
