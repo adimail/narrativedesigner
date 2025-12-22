@@ -10,8 +10,21 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:4173",
     trace: "on-first-retry",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    screenshot: "on",
+    video: {
+      mode: "on",
+      size: { width: 1920, height: 1080 },
+    },
+    viewport: { width: 1920, height: 1080 },
+    deviceScaleFactor: 2,
+    headless: false,
+    launchOptions: {
+      args: [
+        "--show-fps-counter",
+        "--force-device-scale-factor=2",
+        "--high-dpi-support=1",
+      ],
+    },
   },
   projects: [
     {

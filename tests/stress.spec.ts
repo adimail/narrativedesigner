@@ -1,14 +1,23 @@
 import { test, expect } from "@playwright/test";
 import { getRandomPosition, collectMetrics } from "./perf-utils";
+import { SIMULATION_CONFIG } from "./constants";
 
 test.describe("Full System Stress Test", () => {
-  test("500 Nodes + Heavy Interaction", async ({ page }) => {
+  test("Heavy Interaction Simulation", async ({ page }) => {
     await page.goto("/");
-    await page.evaluate(() => (window as any).useStore.getState().clearAll());
+
+    await page.evaluate(() => {
+      const store = (window as any).useStore;
+      store.getState().clearAll();
+      store.setState({
+        isPropertiesPanelOpen: false,
+        isValidationPanelOpen: false,
+      });
+    });
 
     const metrics: any[] = [];
 
-    for (let i = 1; i <= 500; i++) {
+    for (let i = 1; i <= SIMULATION_CONFIG.STRESS_TEST_NODES; i++) {
       const { day, time, route } = getRandomPosition();
       await page.evaluate(
         ({ d, t, r }) => {
@@ -17,10 +26,17 @@ test.describe("Full System Stress Test", () => {
         { d: day, t: time, r: route },
       );
 
-      if (i % 100 === 0) {
+      if (i % SIMULATION_CONFIG.STRESS_SCREENSHOT_INTERVAL === 0) {
         const m = await collectMetrics(page);
         metrics.push(m);
-        await page.screenshot({ path: `./test-results/stress-node-${i}.png` });
+
+        await page.waitForLoadState("networkidle");
+        await page.screenshot({
+          path: `./test-results/stress-node-${i}.png`,
+          fullPage: false,
+          animations: "disabled",
+          scale: "device",
+        });
       }
     }
 
@@ -28,7 +44,7 @@ test.describe("Full System Stress Test", () => {
       (window as any).useStore.getState().nodes.map((n: any) => n.id),
     );
 
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < SIMULATION_CONFIG.STRESS_TEST_INTERACTIONS; i++) {
       const id = nodeIds[Math.floor(Math.random() * nodeIds.length)];
       const { day, time, route } = getRandomPosition();
 
@@ -43,7 +59,15 @@ test.describe("Full System Stress Test", () => {
     }
 
     const finalMetrics = await collectMetrics(page);
-    expect(finalMetrics.nodeCount).toBe(500);
+    expect(finalMetrics.nodeCount).toBe(SIMULATION_CONFIG.STRESS_TEST_NODES);
     expect(finalMetrics.memory).toBeLessThan(1500);
+
+    await page.screenshot({
+      path: `./test-results/final-state.png`,
+      animations: "disabled",
+      scale: "device",
+    });
+
+    await page.pause();
   });
 });
