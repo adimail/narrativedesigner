@@ -241,7 +241,7 @@ export const Canvas = () => {
                 : "bg-white/90 border-slate-200 text-slate-800",
             )}
           >
-            <h2 className="mb-2 text-2xl font-bold">ScenarioGraph</h2>
+            <h2 className="mb-2 text-2xl font-bold">narrativedesigner</h2>
             <p
               className={cn(
                 "mb-6",

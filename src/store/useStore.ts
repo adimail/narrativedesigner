@@ -252,7 +252,7 @@ export const useStore = create<StoreState>()(
         toggleDarkMode: () => set((state) => ({ darkMode: !state.darkMode })),
       }),
       {
-        name: "scenariograph-storage",
+        name: "narrativedesigner-storage",
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => {
           const { nodeMap, validationIssues, draggingId, viewport, ...rest } =
