@@ -309,6 +309,7 @@ export const Canvas = () => {
                 <ScenarioNode
                   key={node.id}
                   node={node}
+                  isConnecting={!!connectingSourceId}
                   onMouseDown={handleMouseDown}
                   onConnectStart={handleConnectStart}
                   onConnectEnd={handleConnectEnd}

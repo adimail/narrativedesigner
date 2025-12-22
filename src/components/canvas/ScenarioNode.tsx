@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { ScenarioNode as NodeType } from "../../types/schema";
 import { getCoordinates, getColumnLayout, getRowLayout } from "../../lib/utils";
 import {
@@ -13,6 +13,7 @@ import { AlertTriangle, XCircle } from "lucide-react";
 
 interface Props {
   node: NodeType;
+  isConnecting: boolean;
   onMouseDown: (e: React.MouseEvent, id: string) => void;
   onConnectStart: (e: React.MouseEvent, id: string) => void;
   onConnectEnd: (e: React.MouseEvent, id: string) => void;
@@ -20,6 +21,7 @@ interface Props {
 
 export const ScenarioNode = ({
   node,
+  isConnecting,
   onMouseDown,
   onConnectStart,
   onConnectEnd,
@@ -29,6 +31,8 @@ export const ScenarioNode = ({
   const nodes = useStore((state) => state.nodes);
   const routes = useStore((state) => state.routes);
   const darkMode = useStore((state) => state.darkMode);
+
+  const [hoverSide, setHoverSide] = useState<"left" | "right">("right");
 
   const isSelected = selectedNodeIds.includes(node.id);
   const issues = validationIssues.filter((i) => i.nodeId === node.id);
@@ -69,6 +73,14 @@ export const ScenarioNode = ({
   const bgColor = darkMode ? routeColor.dark : routeColor.light;
   const borderColor = routeColor.border;
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isConnecting) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      setHoverSide(x < rect.width / 2 ? "left" : "right");
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -93,6 +105,7 @@ export const ScenarioNode = ({
       }}
       onMouseDown={(e) => onMouseDown(e, node.id)}
       onMouseUp={(e) => onConnectEnd(e, node.id)}
+      onMouseMove={handleMouseMove}
     >
       <div
         className={cn(
@@ -182,8 +195,9 @@ export const ScenarioNode = ({
 
       <div
         className={cn(
-          "absolute -right-3 top-1/2 -translate-y-1/2 w-5 h-5 border-2 cursor-crosshair opacity-0 group-hover:opacity-100 flex items-center justify-center hover:scale-110 transition-none z-50 shadow-sm",
+          "absolute top-1/2 -translate-y-1/2 w-5 h-5 border-2 cursor-crosshair opacity-0 group-hover:opacity-100 flex items-center justify-center hover:scale-110 transition-none z-50 shadow-sm",
           darkMode ? "bg-slate-800 border-white" : "bg-black border-white",
+          isConnecting && hoverSide === "left" ? "-left-3" : "-right-3",
         )}
         onMouseDown={(e) => {
           e.stopPropagation();
