@@ -23,10 +23,12 @@ export const Canvas = () => {
   const addNode = useStore((state) => state.addNode);
   const createBranch = useStore((state) => state.createBranch);
   const setScale = useStore((state) => state.setScale);
+  const setViewport = useStore((state) => state.setViewport);
+  const setDraggingId = useStore((state) => state.setDraggingId);
+  const draggingId = useStore((state) => state.draggingId);
   const loadSampleData = useStore((state) => state.loadSampleData);
   const darkMode = useStore((state) => state.darkMode);
 
-  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [connectingSourceId, setConnectingSourceId] = useState<string | null>(
     null,
   );
@@ -242,7 +244,20 @@ export const Canvas = () => {
         centerOnInit={false}
         initialPositionX={0}
         initialPositionY={0}
-        onTransformed={(ref) => setScale(ref.state.scale)}
+        onTransformed={(ref) => {
+          setScale(ref.state.scale);
+          if (wrapperRef.current) {
+            const { positionX, positionY, scale } = ref.state;
+            const { clientWidth, clientHeight } =
+              wrapperRef.current.parentElement!;
+            setViewport(
+              -positionX / scale,
+              -positionY / scale,
+              clientWidth / scale,
+              clientHeight / scale,
+            );
+          }
+        }}
         panning={{ disabled: !!draggingId || !!connectingSourceId }}
       >
         <TransformComponent

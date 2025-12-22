@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
 import { getCoordinates, cn } from "../../lib/utils";
@@ -9,12 +9,94 @@ import {
 } from "../../lib/constants";
 import { Trash2 } from "lucide-react";
 
+const ConnectionPath = React.memo(
+  ({
+    source,
+    target,
+    layoutMap,
+    rowLayoutMap,
+    pinColors,
+    modeSuffix,
+    onLinkClick,
+    onContextMenu,
+    isContextMenuOpen,
+  }: any) => {
+    const start = getCoordinates(
+      source.gridPosition.day,
+      source.gridPosition.time,
+      source.gridPosition.route,
+      source.branchIndex || 0,
+      source.sortIndex || 0,
+      layoutMap,
+      rowLayoutMap,
+    );
+    const end = getCoordinates(
+      target.gridPosition.day,
+      target.gridPosition.time,
+      target.gridPosition.route,
+      target.branchIndex || 0,
+      target.sortIndex || 0,
+      layoutMap,
+      rowLayoutMap,
+    );
+    const pinIndex = source.nextScenarios.indexOf(target.scenarioId);
+    const totalPins = source.nextScenarios.length;
+    const pinSpacing = 24;
+    const startPinY =
+      GRID_CONFIG.nodeHeight / 2 - ((totalPins - 1) * pinSpacing) / 2;
+    const pinOffsetY = startPinY + pinIndex * pinSpacing;
+    const startX = start.x + GRID_CONFIG.nodeWidth;
+    const startY = start.y + pinOffsetY;
+    const endX = end.x;
+    const endY = end.y + GRID_CONFIG.nodeHeight / 2;
+    const controlPointOffset = Math.abs(endX - startX) * 0.5;
+    const path = `M ${startX} ${startY} C ${startX + controlPointOffset} ${startY}, ${endX - controlPointOffset} ${endY}, ${endX} ${endY}`;
+    const strokeColor = pinColors[pinIndex % pinColors.length];
+
+    return (
+      <g className="pointer-events-auto group">
+        <path
+          d={path}
+          fill="none"
+          stroke="transparent"
+          strokeWidth="20"
+          className="cursor-pointer"
+          onClick={(e) => onLinkClick(e, source.id, target.id)}
+          onContextMenu={(e) => onContextMenu(e, source.id, target.id)}
+        />
+        <path
+          d={path}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="8"
+          className={cn(
+            "transition-opacity duration-200 blur-[3px] pointer-events-none",
+            isContextMenuOpen
+              ? "opacity-60"
+              : "opacity-0 group-hover:opacity-60",
+          )}
+        />
+        <path
+          d={path}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="3"
+          markerEnd={`url(#arrowhead-${modeSuffix}-${pinIndex % pinColors.length})`}
+          className="transition-colors opacity-90 pointer-events-none"
+        />
+      </g>
+    );
+  },
+);
+
 export const ConnectionLayer = () => {
   const nodes = useStore((state) => state.nodes);
   const layoutMap = useStore((state) => state.layoutMap);
   const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const disconnectNodes = useStore((state) => state.disconnectNodes);
   const darkMode = useStore((state) => state.darkMode);
+  const draggingId = useStore((state) => state.draggingId);
+  const viewport = useStore((state) => state.viewport);
 
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -29,15 +111,19 @@ export const ConnectionLayer = () => {
     return () => window.removeEventListener("click", handleClick);
   }, []);
 
-  const connections = nodes
-    .flatMap((sourceNode) =>
-      sourceNode.nextScenarios.map((targetId) => {
-        const targetNode = nodes.find((n) => n.scenarioId === targetId);
-        if (!targetNode) return null;
-        return { source: sourceNode, target: targetNode };
-      }),
-    )
-    .filter(Boolean);
+  const allConnections = useMemo(() => {
+    const nodeMap = new Map();
+    nodes.forEach((n) => nodeMap.set(n.scenarioId, n));
+    return nodes
+      .flatMap((sourceNode) =>
+        sourceNode.nextScenarios.map((targetId) => {
+          const targetNode = nodeMap.get(targetId);
+          if (!targetNode) return null;
+          return { source: sourceNode, target: targetNode };
+        }),
+      )
+      .filter(Boolean);
+  }, [nodes]);
 
   const pinColors = darkMode ? PIN_COLORS_DARK : PIN_COLORS_LIGHT;
   const modeSuffix = darkMode ? "dark" : "light";
@@ -63,95 +149,63 @@ export const ConnectionLayer = () => {
     setContextMenu({ x: e.clientX, y: e.clientY, sourceId, targetId });
   };
 
+  const isVisible = (conn: any) => {
+    const start = getCoordinates(
+      conn.source.gridPosition.day,
+      conn.source.gridPosition.time,
+      conn.source.gridPosition.route,
+      conn.source.branchIndex || 0,
+      conn.source.sortIndex || 0,
+      layoutMap,
+      rowLayoutMap,
+    );
+    const end = getCoordinates(
+      conn.target.gridPosition.day,
+      conn.target.gridPosition.time,
+      conn.target.gridPosition.route,
+      conn.target.branchIndex || 0,
+      conn.target.sortIndex || 0,
+      layoutMap,
+      rowLayoutMap,
+    );
+    const minX = Math.min(start.x, end.x);
+    const maxX = Math.max(
+      start.x + GRID_CONFIG.nodeWidth,
+      end.x + GRID_CONFIG.nodeWidth,
+    );
+    const minY = Math.min(start.y, end.y);
+    const maxY = Math.max(
+      start.y + GRID_CONFIG.nodeHeight,
+      end.y + GRID_CONFIG.nodeHeight,
+    );
+    return (
+      maxX > viewport.x &&
+      minX < viewport.x + viewport.w &&
+      maxY > viewport.y &&
+      minY < viewport.y + viewport.h
+    );
+  };
+
+  const staticConnections = allConnections.filter(
+    (c) =>
+      c.source.id !== draggingId && c.target.id !== draggingId && isVisible(c),
+  );
+  const activeConnections = allConnections.filter(
+    (c) =>
+      (c.source.id === draggingId || c.target.id === draggingId) &&
+      isVisible(c),
+  );
+
   return (
     <>
       <svg
-        className="absolute top-0 left-0 pointer-events-none z-10 transition-all duration-300 ease-in-out"
+        className="absolute top-0 left-0 pointer-events-none z-10"
         style={{
           width: layoutMap.totalWidth,
           height: rowLayoutMap.totalHeight,
+          transform: "translate3d(0,0,0)",
         }}
       >
-        {connections.map((conn, idx) => {
-          if (!conn) return null;
-          const start = getCoordinates(
-            conn.source.gridPosition.day,
-            conn.source.gridPosition.time,
-            conn.source.gridPosition.route,
-            conn.source.branchIndex || 0,
-            conn.source.sortIndex || 0,
-            layoutMap,
-            rowLayoutMap,
-          );
-          const end = getCoordinates(
-            conn.target.gridPosition.day,
-            conn.target.gridPosition.time,
-            conn.target.gridPosition.route,
-            conn.target.branchIndex || 0,
-            conn.target.sortIndex || 0,
-            layoutMap,
-            rowLayoutMap,
-          );
-          const pinIndex = conn.source.nextScenarios.indexOf(
-            conn.target.scenarioId,
-          );
-          const totalPins = conn.source.nextScenarios.length;
-          const pinSpacing = 24;
-          const startPinY =
-            GRID_CONFIG.nodeHeight / 2 - ((totalPins - 1) * pinSpacing) / 2;
-          const pinOffsetY = startPinY + pinIndex * pinSpacing;
-          const startX = start.x + GRID_CONFIG.nodeWidth;
-          const startY = start.y + pinOffsetY;
-          const endX = end.x;
-          const endY = end.y + GRID_CONFIG.nodeHeight / 2;
-          const controlPointOffset = Math.abs(endX - startX) * 0.5;
-          const path = `M ${startX} ${startY} C ${startX + controlPointOffset} ${startY}, ${endX - controlPointOffset} ${endY}, ${endX} ${endY}`;
-          const strokeColor = pinColors[pinIndex % pinColors.length];
-          const isContextMenuOpenForThis =
-            contextMenu?.sourceId === conn.source.id &&
-            contextMenu?.targetId === conn.target.id;
-
-          return (
-            <g
-              key={`${conn.source.id}-${conn.target.id}-${idx}`}
-              className="pointer-events-auto group"
-            >
-              <path
-                d={path}
-                fill="none"
-                stroke="transparent"
-                strokeWidth="20"
-                className="cursor-pointer"
-                onClick={(e) =>
-                  handleLinkClick(e, conn.source.id, conn.target.id)
-                }
-                onContextMenu={(e) =>
-                  handleContextMenu(e, conn.source.id, conn.target.id)
-                }
-              />
-              <path
-                d={path}
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth="8"
-                className={cn(
-                  "transition-opacity duration-200 blur-[3px] pointer-events-none",
-                  isContextMenuOpenForThis
-                    ? "opacity-60"
-                    : "opacity-0 group-hover:opacity-60",
-                )}
-              />
-              <path
-                d={path}
-                fill="none"
-                stroke={strokeColor}
-                strokeWidth="3"
-                markerEnd={`url(#arrowhead-${modeSuffix}-${pinIndex % pinColors.length})`}
-                className="transition-colors opacity-90 pointer-events-none"
-              />
-            </g>
-          );
-        })}
         <defs>
           {pinColors.map((color, i) => (
             <marker
@@ -167,11 +221,49 @@ export const ConnectionLayer = () => {
             </marker>
           ))}
         </defs>
+        <g id="static-connections">
+          {staticConnections.map((conn, idx) => (
+            <ConnectionPath
+              key={`${conn.source.id}-${conn.target.id}`}
+              source={conn.source}
+              target={conn.target}
+              layoutMap={layoutMap}
+              rowLayoutMap={rowLayoutMap}
+              pinColors={pinColors}
+              modeSuffix={modeSuffix}
+              onLinkClick={handleLinkClick}
+              onContextMenu={handleContextMenu}
+              isContextMenuOpen={
+                contextMenu?.sourceId === conn.source.id &&
+                contextMenu?.targetId === conn.target.id
+              }
+            />
+          ))}
+        </g>
+        <g id="active-connections">
+          {activeConnections.map((conn, idx) => (
+            <ConnectionPath
+              key={`${conn.source.id}-${conn.target.id}`}
+              source={conn.source}
+              target={conn.target}
+              layoutMap={layoutMap}
+              rowLayoutMap={rowLayoutMap}
+              pinColors={pinColors}
+              modeSuffix={modeSuffix}
+              onLinkClick={handleLinkClick}
+              onContextMenu={handleContextMenu}
+              isContextMenuOpen={
+                contextMenu?.sourceId === conn.source.id &&
+                contextMenu?.targetId === conn.target.id
+              }
+            />
+          ))}
+        </g>
       </svg>
       {contextMenu &&
         createPortal(
           <div
-            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-md border bg-white shadow-xl animate-in fade-in zoom-in-95 duration-100 dark:bg-slate-800 dark:border-slate-700"
+            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-md border bg-white shadow-xl dark:bg-slate-800 dark:border-slate-700"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onContextMenu={(e) => e.preventDefault()}
           >

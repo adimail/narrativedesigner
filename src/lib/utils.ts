@@ -182,7 +182,6 @@ export function getGridPositionFromCoordinates(
 export function validateNode(
   node: ScenarioNode,
   nodeMap: Map<string, ScenarioNode>,
-  duplicateIds: Set<string>,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const dayIndex = DAYS.indexOf(node.gridPosition.day);
@@ -197,7 +196,8 @@ export function validateNode(
     });
   }
 
-  if (duplicateIds.has(node.scenarioId)) {
+  const existing = nodeMap.get(node.scenarioId);
+  if (existing && existing.id !== node.id) {
     issues.push({
       nodeId: node.id,
       type: "error",
