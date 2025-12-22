@@ -44,12 +44,15 @@ export const Toolbar = () => {
         if (result.success) {
           loadProject(result.data);
         } else {
-          const errors = result.error.errors
+          const errorMessages = result.error.issues
             .map((err) => `${err.path.join(".")}: ${err.message}`)
             .slice(0, 3)
             .join("\n");
+
           alert(
-            `Invalid Project Data:\n${errors}${result.error.errors.length > 3 ? "\n..." : ""}`,
+            `Invalid Project Data:\n${errorMessages}${
+              result.error.issues.length > 3 ? "\n..." : ""
+            }`,
           );
         }
       } catch (err) {
