@@ -48,6 +48,7 @@ export const ScenarioNodeSchema = z.object({
   endInfo: EndInfoSchema,
   nextScenarios: z.array(ScenarioIdSchema),
   previousScenarios: z.array(ScenarioIdSchema),
+  edgeColors: z.record(z.string(), z.string()).optional(),
 });
 
 export type LoadInfo = z.infer<typeof LoadInfoSchema>;

@@ -46,6 +46,11 @@ interface StoreState {
   clearSelection: () => void;
   connectNodes: (sourceId: string, targetId: string) => void;
   disconnectNodes: (sourceId: string, targetId: string) => void;
+  setConnectionColor: (
+    sourceId: string,
+    targetScenarioId: string,
+    color: string,
+  ) => void;
   validateAll: () => void;
   importData: (data: ScenarioNode[]) => void;
   loadProject: (nodes: ScenarioNode[]) => void;
@@ -207,6 +212,22 @@ export const useStore = create<StoreState>()(
             }),
           }));
           get().validateAll();
+        },
+        setConnectionColor: (sourceId, targetScenarioId, color) => {
+          set((state) => ({
+            nodes: state.nodes.map((n) => {
+              if (n.id === sourceId) {
+                return {
+                  ...n,
+                  edgeColors: {
+                    ...(n.edgeColors || {}),
+                    [targetScenarioId]: color,
+                  },
+                };
+              }
+              return n;
+            }),
+          }));
         },
         validateAll: () => {
           if (get().draggingId) return;

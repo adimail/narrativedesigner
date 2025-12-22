@@ -51,7 +51,9 @@ const ConnectionPath = React.memo(
     const endY = end.y + GRID_CONFIG.nodeHeight / 2;
     const controlPointOffset = Math.abs(endX - startX) * 0.5;
     const path = `M ${startX} ${startY} C ${startX + controlPointOffset} ${startY}, ${endX - controlPointOffset} ${endY}, ${endX} ${endY}`;
-    const strokeColor = pinColors[pinIndex % pinColors.length];
+
+    const customColor = source.edgeColors?.[target.scenarioId];
+    const strokeColor = customColor || pinColors[pinIndex % pinColors.length];
 
     return (
       <g className="pointer-events-auto group">
@@ -94,6 +96,7 @@ export const ConnectionLayer = () => {
   const layoutMap = useStore((state) => state.layoutMap);
   const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const disconnectNodes = useStore((state) => state.disconnectNodes);
+  const setConnectionColor = useStore((state) => state.setConnectionColor);
   const darkMode = useStore((state) => state.darkMode);
   const draggingId = useStore((state) => state.draggingId);
   const viewport = useStore((state) => state.viewport);
@@ -196,6 +199,17 @@ export const ConnectionLayer = () => {
       isVisible(c),
   );
 
+  const sourceNode = contextMenu
+    ? nodes.find((n) => n.id === contextMenu.sourceId)
+    : null;
+  const targetNode = contextMenu
+    ? nodes.find((n) => n.id === contextMenu.targetId)
+    : null;
+  const currentColor =
+    sourceNode && targetNode
+      ? sourceNode.edgeColors?.[targetNode.scenarioId]
+      : null;
+
   return (
     <>
       <svg
@@ -263,10 +277,38 @@ export const ConnectionLayer = () => {
       {contextMenu &&
         createPortal(
           <div
-            className="fixed z-[9999] min-w-[160px] overflow-hidden rounded-md border bg-white shadow-xl dark:bg-slate-800 dark:border-slate-700"
+            className="fixed z-[9999] min-w-[180px] overflow-hidden rounded-md border bg-white shadow-xl dark:bg-slate-800 dark:border-slate-700"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onContextMenu={(e) => e.preventDefault()}
+            onClick={(e) => e.stopPropagation()}
           >
+            <div className="p-2 border-b dark:border-slate-700">
+              <div className="text-[10px] font-bold uppercase opacity-50 mb-2 px-1 text-white">
+                Link Color
+              </div>
+              <div className="grid grid-cols-4 gap-2 px-1">
+                {pinColors.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() =>
+                      targetNode &&
+                      setConnectionColor(
+                        contextMenu.sourceId,
+                        targetNode.scenarioId,
+                        color,
+                      )
+                    }
+                    className={cn(
+                      "w-6 h-6 rounded-full border-2 transition-all hover:scale-110",
+                      currentColor === color
+                        ? "border-slate-900 dark:border-white scale-110 shadow-md"
+                        : "border-transparent",
+                    )}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
             <div className="p-1">
               <button
                 onClick={() => {
