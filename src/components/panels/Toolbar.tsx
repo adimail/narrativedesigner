@@ -4,6 +4,7 @@ import { useStore } from "../../store/useStore";
 import { ScenarioNode } from "../../types/schema";
 import { cn } from "../../lib/utils";
 import { DAYS, TIMES } from "../../lib/constants";
+import { downloadJson } from "../../lib/file-system";
 
 export const Toolbar = () => {
   const nodes = useStore((state) => state.nodes);
@@ -14,15 +15,7 @@ export const Toolbar = () => {
   const clearAll = useStore((state) => state.clearAll);
 
   const handleSaveProject = () => {
-    const dataStr =
-      "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(nodes, null, 2));
-    const downloadAnchorNode = document.createElement("a");
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "project.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    downloadJson(nodes, "project.json");
   };
 
   const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,15 +62,7 @@ export const Toolbar = () => {
       },
     }));
 
-    const dataStr =
-      "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(exportData, null, 2));
-    const downloadAnchorNode = document.createElement("a");
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "scenarios_export.json");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    downloadJson(exportData, "scenarios_export.json");
   };
 
   const handleClear = () => {
