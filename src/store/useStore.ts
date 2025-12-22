@@ -8,7 +8,7 @@ import {
   RouteEnum,
   ValidationIssue,
 } from "../types/schema";
-import { validateNode } from "../lib/utils";
+import { validateNode, getColumnLayout, getRowLayout } from "../lib/utils";
 import { DEFAULT_ROUTES } from "../lib/constants";
 
 interface StoreState {
@@ -20,6 +20,8 @@ interface StoreState {
   isPropertiesPanelOpen: boolean;
   isValidationPanelOpen: boolean;
   darkMode: boolean;
+  layoutMap: ReturnType<typeof getColumnLayout>;
+  rowLayoutMap: ReturnType<typeof getRowLayout>;
 
   addNode: (day: DayEnum, time: TimeEnum, route: RouteEnum) => void;
   updateNode: (id: string, data: Partial<ScenarioNode>) => void;
@@ -46,6 +48,7 @@ interface StoreState {
   toggleValidationPanel: () => void;
   toggleDarkMode: () => void;
   createBranch: (route: string) => number;
+  refreshLayout: () => void;
 }
 
 const normalizeBranches = (
@@ -85,6 +88,16 @@ export const useStore = create<StoreState>()(
       isPropertiesPanelOpen: true,
       isValidationPanelOpen: true,
       darkMode: false,
+      layoutMap: getColumnLayout([], [...DEFAULT_ROUTES]),
+      rowLayoutMap: getRowLayout([], [...DEFAULT_ROUTES]),
+
+      refreshLayout: () => {
+        const { nodes, routes } = get();
+        set({
+          layoutMap: getColumnLayout(nodes, routes),
+          rowLayoutMap: getRowLayout(nodes, routes),
+        });
+      },
 
       createBranch: (route) => {
         const { nodes } = get();
@@ -98,7 +111,6 @@ export const useStore = create<StoreState>()(
 
       addNode: (day, time, route) => {
         const { nodes } = get();
-
         const dayNum = day.replace("Day", "").padStart(2, "0");
         const routePrefix = route;
 
@@ -109,9 +121,7 @@ export const useStore = create<StoreState>()(
             .toString()
             .padStart(3, "0")}`;
           const exists = nodes.some((n) => n.scenarioId === scenarioId);
-          if (!exists) {
-            break;
-          }
+          if (!exists) break;
           counter++;
         }
 
@@ -151,18 +161,21 @@ export const useStore = create<StoreState>()(
           previousScenarios: [],
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
+        get().refreshLayout();
         get().validateAll();
       },
 
       updateNode: (id, data) => {
         const { nodes } = get();
         const nodeToUpdate = nodes.find((n) => n.id === id);
+        if (!nodeToUpdate) return;
 
-        if (
-          !nodeToUpdate ||
-          !data.scenarioId ||
-          data.scenarioId === nodeToUpdate.scenarioId
-        ) {
+        const isStructuralChange =
+          data.gridPosition !== undefined ||
+          data.branchIndex !== undefined ||
+          data.sortIndex !== undefined;
+
+        if (!data.scenarioId || data.scenarioId === nodeToUpdate.scenarioId) {
           set((state) => ({
             nodes: state.nodes.map((n) =>
               n.id === id ? { ...n, ...data } : n,
@@ -171,12 +184,9 @@ export const useStore = create<StoreState>()(
         } else {
           const oldId = nodeToUpdate.scenarioId;
           const newId = data.scenarioId;
-
           set((state) => ({
             nodes: state.nodes.map((n) => {
-              if (n.id === id) {
-                return { ...n, ...data };
-              }
+              if (n.id === id) return { ...n, ...data };
               return {
                 ...n,
                 nextScenarios: n.nextScenarios.map((sid) =>
@@ -203,6 +213,8 @@ export const useStore = create<StoreState>()(
             }),
           }));
         }
+
+        if (isStructuralChange) get().refreshLayout();
         get().validateAll();
       },
 
@@ -284,82 +296,45 @@ export const useStore = create<StoreState>()(
                     : n.loadInfo,
               };
             }
-
             if (!isSameSlot) {
               const sourceIdx = newSourceOrder.findIndex((x) => x.id === n.id);
-              if (sourceIdx !== -1) {
-                return {
-                  ...n,
-                  sortIndex: sourceIdx,
-                };
-              }
+              if (sourceIdx !== -1) return { ...n, sortIndex: sourceIdx };
             }
-
             return n;
           });
 
           let normalized = normalizeBranches(updatedNodes, oldRoute);
-          if (oldRoute !== route) {
+          if (oldRoute !== route)
             normalized = normalizeBranches(normalized, route);
-          }
-
           return { nodes: normalized };
         });
+        get().refreshLayout();
         get().validateAll();
       },
 
       deleteNode: (id) => {
         const nodeToDelete = get().nodes.find((n) => n.id === id);
         if (!nodeToDelete) return;
-
-        const { day, time, route } = nodeToDelete.gridPosition;
-        const branch = nodeToDelete.branchIndex || 0;
+        const { route } = nodeToDelete.gridPosition;
 
         set((state) => {
           const remainingNodes = state.nodes.filter((n) => n.id !== id);
-
-          const slotNodes = remainingNodes
-            .filter(
-              (n) =>
-                n.gridPosition.day === day &&
-                n.gridPosition.time === time &&
-                n.gridPosition.route === route &&
-                (n.branchIndex || 0) === branch,
-            )
-            .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
-
-          const cleanedNodes = remainingNodes.map((n) => {
-            const nextScenarios = n.nextScenarios.filter(
+          const cleanedNodes = remainingNodes.map((n) => ({
+            ...n,
+            nextScenarios: n.nextScenarios.filter(
               (sid) => sid !== nodeToDelete.scenarioId,
-            );
-            const previousScenarios = n.previousScenarios.filter(
+            ),
+            previousScenarios: n.previousScenarios.filter(
               (sid) => sid !== nodeToDelete.scenarioId,
-            );
-
-            const slotIdx = slotNodes.findIndex((x) => x.id === n.id);
-            if (slotIdx !== -1) {
-              return {
-                ...n,
-                nextScenarios,
-                previousScenarios,
-                sortIndex: slotIdx,
-              };
-            }
-
-            return {
-              ...n,
-              nextScenarios,
-              previousScenarios,
-            };
-          });
-
+            ),
+          }));
           const normalized = normalizeBranches(cleanedNodes, route);
-
           return {
             nodes: normalized,
             selectedNodeIds: state.selectedNodeIds.filter((sid) => sid !== id),
           };
         });
+        get().refreshLayout();
         get().validateAll();
       },
 
@@ -380,24 +355,21 @@ export const useStore = create<StoreState>()(
         const { nodes } = get();
         const source = nodes.find((n) => n.id === sourceId);
         const target = nodes.find((n) => n.id === targetId);
-
         if (!source || !target || source.id === target.id) return;
         if (source.nextScenarios.includes(target.scenarioId)) return;
 
         set((state) => ({
           nodes: state.nodes.map((n) => {
-            if (n.id === source.id) {
+            if (n.id === source.id)
               return {
                 ...n,
                 nextScenarios: [...n.nextScenarios, target.scenarioId],
               };
-            }
-            if (n.id === target.id) {
+            if (n.id === target.id)
               return {
                 ...n,
                 previousScenarios: [...n.previousScenarios, source.scenarioId],
               };
-            }
             return n;
           }),
         }));
@@ -408,27 +380,24 @@ export const useStore = create<StoreState>()(
         const { nodes } = get();
         const source = nodes.find((n) => n.id === sourceId);
         const target = nodes.find((n) => n.id === targetId);
-
         if (!source || !target) return;
 
         set((state) => ({
           nodes: state.nodes.map((n) => {
-            if (n.id === source.id) {
+            if (n.id === source.id)
               return {
                 ...n,
                 nextScenarios: n.nextScenarios.filter(
                   (id) => id !== target.scenarioId,
                 ),
               };
-            }
-            if (n.id === target.id) {
+            if (n.id === target.id)
               return {
                 ...n,
                 previousScenarios: n.previousScenarios.filter(
                   (id) => id !== source.scenarioId,
                 ),
               };
-            }
             return n;
           }),
         }));
@@ -442,38 +411,14 @@ export const useStore = create<StoreState>()(
       },
 
       importData: (data) => {
-        const grouped: Record<string, ScenarioNode[]> = {};
-
-        data.forEach((n) => {
-          const key = `${n.gridPosition.day}-${n.gridPosition.time}-${n.gridPosition.route}-${n.branchIndex || 0}`;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push(n);
-        });
-
-        const patchedData: ScenarioNode[] = [];
-        Object.values(grouped).forEach((group) => {
-          group.sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
-          group.forEach((n, idx) => {
-            patchedData.push({
-              ...n,
-              sortIndex: idx,
-              branchIndex: n.branchIndex || 0,
-              description: n.description || "",
-              endInfo: {
-                ...n.endInfo,
-                atDay: n.endInfo.atDay || n.gridPosition.day,
-                atTime: n.endInfo.atTime || n.gridPosition.time,
-              },
-            });
-          });
-        });
-
-        set({ nodes: patchedData, selectedNodeIds: [], validationIssues: [] });
+        set({ nodes: data });
+        get().refreshLayout();
         get().validateAll();
       },
 
       loadProject: (nodes) => {
         set({ nodes, selectedNodeIds: [], validationIssues: [] });
+        get().refreshLayout();
         get().validateAll();
       },
 
@@ -481,7 +426,6 @@ export const useStore = create<StoreState>()(
         const node1Id = uuidv4();
         const node2Id = uuidv4();
         const node3Id = uuidv4();
-
         const sampleNodes: ScenarioNode[] = [
           {
             id: node1Id,
@@ -550,12 +494,8 @@ export const useStore = create<StoreState>()(
             previousScenarios: ["D01_RCommon_Sc002"],
           },
         ];
-
-        set({
-          nodes: sampleNodes,
-          selectedNodeIds: [],
-          validationIssues: [],
-        });
+        set({ nodes: sampleNodes, selectedNodeIds: [], validationIssues: [] });
+        get().refreshLayout();
         get().validateAll();
       },
 
@@ -566,6 +506,7 @@ export const useStore = create<StoreState>()(
           selectedNodeIds: [],
           validationIssues: [],
         });
+        get().refreshLayout();
       },
 
       setScale: (scale) => set({ scale }),

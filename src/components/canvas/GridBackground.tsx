@@ -1,25 +1,12 @@
 import { DAYS, TIMES, GRID_CONFIG, COLORS } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
-import { cn, getColumnLayout, getRowLayout } from "../../lib/utils";
-import { useMemo } from "react";
+import { cn } from "../../lib/utils";
 
 export const GridBackground = () => {
   const darkMode = useStore((state) => state.darkMode);
-  const nodes = useStore((state) => state.nodes);
   const routes = useStore((state) => state.routes);
-
-  const layoutMap = useMemo(
-    () => getColumnLayout(nodes, routes),
-    [nodes, routes],
-  );
-
-  const rowLayoutMap = useMemo(
-    () => getRowLayout(nodes, routes),
-    [nodes, routes],
-  );
-
-  const width = layoutMap.totalWidth;
-  const height = rowLayoutMap.totalHeight;
+  const layoutMap = useStore((state) => state.layoutMap);
+  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
 
   return (
     <div
@@ -27,7 +14,7 @@ export const GridBackground = () => {
         "absolute top-0 left-0 pointer-events-none select-none font-mono transition-colors",
         darkMode ? "bg-slate-900" : "bg-white",
       )}
-      style={{ width, height }}
+      style={{ width: layoutMap.totalWidth, height: rowLayoutMap.totalHeight }}
     >
       {routes.map((route) => {
         const rowData = rowLayoutMap.rows[route];
@@ -38,14 +25,10 @@ export const GridBackground = () => {
               "absolute w-full border-b transition-all duration-300 ease-in-out",
               darkMode ? "border-slate-500" : "border-gray-500",
             )}
-            style={{
-              top: rowData.startY,
-              height: rowData.height,
-            }}
+            style={{ top: rowData.startY, height: rowData.height }}
           />
         );
       })}
-
       {DAYS.map((day) =>
         TIMES.map((time) => {
           const key = `${day}-${time}`;
@@ -68,14 +51,12 @@ export const GridBackground = () => {
           );
         }),
       )}
-
       {DAYS.map((day) => {
         const startKey = `${day}-Morning`;
         const endKey = `${day}-Night`;
         const startCol = layoutMap.columns[startKey];
         const endCol = layoutMap.columns[endKey];
         const dayWidth = endCol.startX + endCol.width - startCol.startX;
-
         return (
           <div
             key={day}
@@ -96,7 +77,6 @@ export const GridBackground = () => {
           </div>
         );
       })}
-
       {DAYS.map((day) =>
         TIMES.map((time) => {
           const key = `${day}-${time}`;
@@ -122,7 +102,6 @@ export const GridBackground = () => {
           );
         }),
       )}
-
       {routes.map((route) => {
         const rowData = rowLayoutMap.rows[route];
         return (
@@ -145,7 +124,6 @@ export const GridBackground = () => {
           </div>
         );
       })}
-
       <div
         className={cn(
           "absolute top-0 left-0 border-r border-b z-20",

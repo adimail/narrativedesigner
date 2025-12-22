@@ -1,12 +1,7 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
-import {
-  getCoordinates,
-  getColumnLayout,
-  getRowLayout,
-  cn,
-} from "../../lib/utils";
+import { getCoordinates, cn } from "../../lib/utils";
 import {
   GRID_CONFIG,
   PIN_COLORS_DARK,
@@ -16,7 +11,8 @@ import { Trash2 } from "lucide-react";
 
 export const ConnectionLayer = () => {
   const nodes = useStore((state) => state.nodes);
-  const routes = useStore((state) => state.routes);
+  const layoutMap = useStore((state) => state.layoutMap);
+  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const disconnectNodes = useStore((state) => state.disconnectNodes);
   const darkMode = useStore((state) => state.darkMode);
 
@@ -30,11 +26,8 @@ export const ConnectionLayer = () => {
   useEffect(() => {
     const handleClick = () => setContextMenu(null);
     window.addEventListener("click", handleClick);
-    window.addEventListener("contextmenu", (e) => {
-      if (contextMenu) setContextMenu(null);
-    });
     return () => window.removeEventListener("click", handleClick);
-  }, [contextMenu]);
+  }, []);
 
   const connections = nodes
     .flatMap((sourceNode) =>
@@ -45,23 +38,6 @@ export const ConnectionLayer = () => {
       }),
     )
     .filter(Boolean);
-
-  const getStackIndex = (node: (typeof nodes)[0]) => {
-    return node.sortIndex || 0;
-  };
-
-  const layoutMap = useMemo(
-    () => getColumnLayout(nodes, routes),
-    [nodes, routes],
-  );
-
-  const rowLayoutMap = useMemo(
-    () => getRowLayout(nodes, routes),
-    [nodes, routes],
-  );
-
-  const width = layoutMap.totalWidth;
-  const height = rowLayoutMap.totalHeight;
 
   const pinColors = darkMode ? PIN_COLORS_DARK : PIN_COLORS_LIGHT;
   const modeSuffix = darkMode ? "dark" : "light";
@@ -84,32 +60,26 @@ export const ConnectionLayer = () => {
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      sourceId,
-      targetId,
-    });
+    setContextMenu({ x: e.clientX, y: e.clientY, sourceId, targetId });
   };
 
   return (
     <>
       <svg
         className="absolute top-0 left-0 pointer-events-none z-10 transition-all duration-300 ease-in-out"
-        style={{ width, height }}
+        style={{
+          width: layoutMap.totalWidth,
+          height: rowLayoutMap.totalHeight,
+        }}
       >
         {connections.map((conn, idx) => {
           if (!conn) return null;
-
-          const sourceStack = getStackIndex(conn.source);
-          const targetStack = getStackIndex(conn.target);
-
           const start = getCoordinates(
             conn.source.gridPosition.day,
             conn.source.gridPosition.time,
             conn.source.gridPosition.route,
             conn.source.branchIndex || 0,
-            sourceStack,
+            conn.source.sortIndex || 0,
             layoutMap,
             rowLayoutMap,
           );
@@ -118,11 +88,10 @@ export const ConnectionLayer = () => {
             conn.target.gridPosition.time,
             conn.target.gridPosition.route,
             conn.target.branchIndex || 0,
-            targetStack,
+            conn.target.sortIndex || 0,
             layoutMap,
             rowLayoutMap,
           );
-
           const pinIndex = conn.source.nextScenarios.indexOf(
             conn.target.scenarioId,
           );
@@ -131,17 +100,13 @@ export const ConnectionLayer = () => {
           const startPinY =
             GRID_CONFIG.nodeHeight / 2 - ((totalPins - 1) * pinSpacing) / 2;
           const pinOffsetY = startPinY + pinIndex * pinSpacing;
-
           const startX = start.x + GRID_CONFIG.nodeWidth;
           const startY = start.y + pinOffsetY;
           const endX = end.x;
           const endY = end.y + GRID_CONFIG.nodeHeight / 2;
-
           const controlPointOffset = Math.abs(endX - startX) * 0.5;
           const path = `M ${startX} ${startY} C ${startX + controlPointOffset} ${startY}, ${endX - controlPointOffset} ${endY}, ${endX} ${endY}`;
-
           const strokeColor = pinColors[pinIndex % pinColors.length];
-
           const isContextMenuOpenForThis =
             contextMenu?.sourceId === conn.source.id &&
             contextMenu?.targetId === conn.target.id;
@@ -164,7 +129,6 @@ export const ConnectionLayer = () => {
                   handleContextMenu(e, conn.source.id, conn.target.id)
                 }
               />
-
               <path
                 d={path}
                 fill="none"
@@ -177,7 +141,6 @@ export const ConnectionLayer = () => {
                     : "opacity-0 group-hover:opacity-60",
                 )}
               />
-
               <path
                 d={path}
                 fill="none"
@@ -205,7 +168,6 @@ export const ConnectionLayer = () => {
           ))}
         </defs>
       </svg>
-
       {contextMenu &&
         createPortal(
           <div

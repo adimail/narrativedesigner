@@ -1,14 +1,10 @@
-import React, { useRef, useState, useMemo, useEffect } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { useStore } from "../../store/useStore";
 import { GridBackground } from "./GridBackground";
 import { ConnectionLayer } from "./ConnectionLayer";
 import { ScenarioNode } from "./ScenarioNode";
-import {
-  getGridPositionFromCoordinates,
-  getColumnLayout,
-  getRowLayout,
-} from "../../lib/utils";
+import { getGridPositionFromCoordinates } from "../../lib/utils";
 import { GRID_CONFIG } from "../../lib/constants";
 import { Button } from "../ui/button";
 import { Play, Plus } from "lucide-react";
@@ -18,6 +14,8 @@ import { DayEnum, TimeEnum, RouteEnum } from "../../types/schema";
 export const Canvas = () => {
   const nodes = useStore((state) => state.nodes);
   const routes = useStore((state) => state.routes);
+  const layoutMap = useStore((state) => state.layoutMap);
+  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const moveNode = useStore((state) => state.moveNode);
   const selectNode = useStore((state) => state.selectNode);
   const clearSelection = useStore((state) => state.clearSelection);
@@ -38,7 +36,6 @@ export const Canvas = () => {
     x2: number;
     y2: number;
   } | null>(null);
-
   const [branchDropTarget, setBranchDropTarget] = useState<{
     day: DayEnum;
     time: TimeEnum;
@@ -50,16 +47,6 @@ export const Canvas = () => {
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const layoutMap = useMemo(
-    () => getColumnLayout(nodes, routes),
-    [nodes, routes],
-  );
-
-  const rowLayoutMap = useMemo(
-    () => getRowLayout(nodes, routes),
-    [nodes, routes],
-  );
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -67,10 +54,8 @@ export const Canvas = () => {
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
         target.isContentEditable
-      ) {
+      )
         return;
-      }
-
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         const state = useStore.getState();
@@ -80,7 +65,6 @@ export const Canvas = () => {
         }
       }
     };
-
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, []);
@@ -109,30 +93,22 @@ export const Canvas = () => {
       addNode(day, time, route);
       return;
     }
-
-    if (e.target === e.currentTarget) {
-      clearSelection();
-    }
+    if (e.target === e.currentTarget) clearSelection();
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (connectingSourceId && wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
       const scale = useStore.getState().scale;
-
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
-
       setTempLine((prev) => (prev ? { ...prev, x2: x, y2: y } : null));
     }
-
     if (draggingId && wrapperRef.current) {
       const rect = wrapperRef.current.getBoundingClientRect();
       const scale = useStore.getState().scale;
-
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
-
       const { day, time, route } = getGridPositionFromCoordinates(
         x,
         y,
@@ -140,25 +116,21 @@ export const Canvas = () => {
         rowLayoutMap,
         routes,
       );
-
       const rowData = rowLayoutMap.rows[route];
       const colKey = `${day}-${time}`;
       const colData = layoutMap.columns[colKey];
-
       const nodesInCellCount = nodes.filter(
         (n) =>
           n.gridPosition.day === day &&
           n.gridPosition.time === time &&
           n.gridPosition.route === route,
       ).length;
-
       let targetBranch = 0;
       if (rowData) {
         const relativeY = y - rowData.startY;
         targetBranch = Math.floor(relativeY / GRID_CONFIG.branchHeight);
         if (targetBranch < 0) targetBranch = 0;
       }
-
       if (
         nodesInCellCount > 1 &&
         rowData &&
@@ -175,12 +147,9 @@ export const Canvas = () => {
         });
       } else {
         setBranchDropTarget(null);
-
-        if (rowData && targetBranch > rowData.maxBranch) {
+        if (rowData && targetBranch > rowData.maxBranch)
           targetBranch = rowData.maxBranch;
-        }
       }
-
       let targetIndex = 0;
       if (colData) {
         const relativeX = x - colData.startX;
@@ -188,7 +157,6 @@ export const Canvas = () => {
         targetIndex = Math.floor(relativeX / slotWidth);
         if (targetIndex < 0) targetIndex = 0;
       }
-
       moveNode(draggingId, day, time, route, targetIndex, targetBranch);
     }
   };
@@ -205,7 +173,6 @@ export const Canvas = () => {
         newBranchIndex,
       );
     }
-
     setDraggingId(null);
     setConnectingSourceId(null);
     setTempLine(null);
@@ -218,26 +185,19 @@ export const Canvas = () => {
     const scale = useStore.getState().scale;
     const x = (e.clientX - rect.left) / scale;
     const y = (e.clientY - rect.top) / scale;
-
     setConnectingSourceId(id);
     setTempLine({ x1: x, y1: y, x2: x, y2: y });
   };
 
   const handleConnectEnd = (e: React.MouseEvent, targetId: string) => {
-    if (connectingSourceId && connectingSourceId !== targetId) {
+    if (connectingSourceId && connectingSourceId !== targetId)
       connectNodes(connectingSourceId, targetId);
-    }
     setConnectingSourceId(null);
     setTempLine(null);
     setDraggingId(null);
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-  };
-
-  const totalWidth = layoutMap.totalWidth;
-  const totalHeight = rowLayoutMap.totalHeight;
+  const handleContextMenu = (e: React.MouseEvent) => e.preventDefault();
 
   return (
     <div
@@ -275,7 +235,6 @@ export const Canvas = () => {
           </div>
         </div>
       )}
-
       <TransformWrapper
         minScale={0.1}
         maxScale={4}
@@ -296,14 +255,15 @@ export const Canvas = () => {
               "relative shadow-[8px_8px_0px_0px_rgba(0,0,0,0.2)] transition-all duration-300 ease-in-out",
               darkMode ? "bg-slate-900" : "bg-white",
             )}
-            style={{ width: totalWidth, height: totalHeight }}
+            style={{
+              width: layoutMap.totalWidth,
+              height: rowLayoutMap.totalHeight,
+            }}
             onClick={handleCanvasClick}
             onContextMenu={handleContextMenu}
           >
             <GridBackground />
-
             <ConnectionLayer />
-
             <div className="absolute left-0 top-0 z-20 h-full w-full pointer-events-none">
               {nodes.map((node) => (
                 <ScenarioNode
@@ -316,7 +276,6 @@ export const Canvas = () => {
                 />
               ))}
             </div>
-
             {branchDropTarget && (
               <div
                 className="absolute z-40 flex items-center justify-center pointer-events-none animate-pulse"
@@ -335,7 +294,6 @@ export const Canvas = () => {
                 </div>
               </div>
             )}
-
             {tempLine && (
               <svg className="pointer-events-none absolute left-0 top-0 z-50 h-full w-full">
                 <line
