@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "format": "prettier --write \"./src/**/*.{ts,tsx,js,jsx,json,css,html}\"",
-    "check-format": "prettier --check \"./src/**/*.{ts,tsx,js,jsx,json,css,html}\""
+    "check-format": "prettier --check \"./src/**/*.{ts,tsx,js,jsx,json,css,html}\"",
+    "stress:test": "npx playwright test",
+    "stress:test:headed": "npx playwright test --headed",
+    "test:report": "npx playwright show-report"
   },
   "dependencies": {
     "autoprefixer": "^10.4.23",
@@ -27,6 +30,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.57.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
