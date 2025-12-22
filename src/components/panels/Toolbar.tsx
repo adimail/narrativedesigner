@@ -1,4 +1,13 @@
-import { Download, Upload, Moon, Sun, Trash2, Save } from "lucide-react";
+import {
+  Download,
+  Upload,
+  Moon,
+  Sun,
+  Trash2,
+  Save,
+  Undo2,
+  Redo2,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { useStore } from "../../store/useStore";
 import { ScenarioNodeSchema } from "../../types/schema";
@@ -14,6 +23,9 @@ export const Toolbar = () => {
   const darkMode = useStore((state) => state.darkMode);
   const toggleDarkMode = useStore((state) => state.toggleDarkMode);
   const clearAll = useStore((state) => state.clearAll);
+
+  const undo = () => useStore.temporal.getState().undo();
+  const redo = () => useStore.temporal.getState().redo();
 
   const handleSaveProject = () => {
     downloadJson(nodes, "project.json");
@@ -111,7 +123,16 @@ export const Toolbar = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" onClick={undo}>
+          <Undo2 className="w-5 h-5" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={redo}>
+          <Redo2 className="w-5 h-5" />
+        </Button>
+
+        <div className="h-8 w-px bg-gray-300 mx-2" />
+
         <Button variant="ghost" size="icon" onClick={toggleDarkMode}>
           {darkMode ? (
             <Sun className="w-5 h-5" />
