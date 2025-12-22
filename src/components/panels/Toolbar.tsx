@@ -1,10 +1,11 @@
 import { Download, Upload, Moon, Sun, Trash2, Save } from "lucide-react";
 import { Button } from "../ui/button";
 import { useStore } from "../../store/useStore";
-import { ScenarioNode } from "../../types/schema";
+import { ScenarioNodeSchema } from "../../types/schema";
 import { cn } from "../../lib/utils";
 import { DAYS, TIMES } from "../../lib/constants";
 import { downloadJson } from "../../lib/file-system";
+import { z } from "zod";
 
 export const Toolbar = () => {
   const nodes = useStore((state) => state.nodes);
@@ -26,14 +27,23 @@ export const Toolbar = () => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (Array.isArray(json)) {
-          loadProject(json as ScenarioNode[]);
+        const result = z.array(ScenarioNodeSchema).safeParse(json);
+
+        if (result.success) {
+          loadProject(result.data);
         } else {
-          alert("Invalid Project JSON format");
+          const errors = result.error.errors
+            .map((err) => `${err.path.join(".")}: ${err.message}`)
+            .slice(0, 3)
+            .join("\n");
+          alert(
+            `Invalid Project Data:\n${errors}${result.error.errors.length > 3 ? "\n..." : ""}`,
+          );
         }
       } catch (err) {
-        console.error(err);
-        alert("Error parsing JSON");
+        alert("Error parsing JSON file");
+      } finally {
+        e.target.value = "";
       }
     };
     reader.readAsText(file);
