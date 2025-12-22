@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "../../store/useStore";
-import { getCoordinates, cn } from "../../lib/utils";
+import {
+  getCoordinates,
+  cn,
+  getColumnLayout,
+  getRowLayout,
+} from "../../lib/utils";
 import {
   GRID_CONFIG,
   PIN_COLORS_DARK,
@@ -29,6 +34,7 @@ const ConnectionPath = React.memo(
       source.sortIndex || 0,
       layoutMap,
       rowLayoutMap,
+      source.isRoutine,
     );
     const end = getCoordinates(
       target.gridPosition.day,
@@ -38,6 +44,7 @@ const ConnectionPath = React.memo(
       target.sortIndex || 0,
       layoutMap,
       rowLayoutMap,
+      target.isRoutine,
     );
     const pinIndex = source.nextScenarios.indexOf(target.scenarioId);
     const totalPins = source.nextScenarios.length;
@@ -72,7 +79,7 @@ const ConnectionPath = React.memo(
           d={path}
           fill="none"
           stroke={strokeColor}
-          strokeWidth="8"
+          strokeWidth="3"
           className={cn(
             "transition-opacity duration-200 blur-[3px] pointer-events-none",
             isContextMenuOpen
@@ -93,10 +100,13 @@ const ConnectionPath = React.memo(
   },
 );
 
-export const ConnectionLayer = () => {
+interface Props {
+  layoutMap: ReturnType<typeof getColumnLayout>;
+  rowLayoutMap: ReturnType<typeof getRowLayout>;
+}
+
+export const ConnectionLayer = ({ layoutMap, rowLayoutMap }: Props) => {
   const nodes = useStore((state) => state.nodes);
-  const layoutMap = useStore((state) => state.layoutMap);
-  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const disconnectNodes = useStore((state) => state.disconnectNodes);
   const setConnectionColor = useStore((state) => state.setConnectionColor);
   const darkMode = useStore((state) => state.darkMode);
@@ -138,7 +148,7 @@ export const ConnectionLayer = () => {
     sourceId: string,
     targetId: string,
   ) => {
-    if (e.ctrlKey) {
+    if (e.altKey) {
       e.stopPropagation();
       disconnectNodes(sourceId, targetId);
     }
@@ -163,6 +173,7 @@ export const ConnectionLayer = () => {
       conn.source.sortIndex || 0,
       layoutMap,
       rowLayoutMap,
+      conn.source.isRoutine,
     );
     const end = getCoordinates(
       conn.target.gridPosition.day,
@@ -172,6 +183,7 @@ export const ConnectionLayer = () => {
       conn.target.sortIndex || 0,
       layoutMap,
       rowLayoutMap,
+      conn.target.isRoutine,
     );
     const minX = Math.min(start.x, end.x);
     const maxX = Math.max(

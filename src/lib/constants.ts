@@ -1,5 +1,3 @@
-import { RouteEnum } from "../types/schema";
-
 export const DAYS: string[] = Array.from(
   { length: 28 },
   (_, i) => `Day${i + 1}`,
@@ -7,7 +5,7 @@ export const DAYS: string[] = Array.from(
 
 export const TIMES: string[] = ["Morning", "Afternoon", "Evening", "Night"];
 
-export const DEFAULT_ROUTES: RouteEnum[] = [
+export const DEFAULT_ROUTES: string[] = [
   "Common",
   "Alyssa",
   "Rhea",
@@ -25,6 +23,7 @@ export const GRID_CONFIG = {
   sidebarWidth: 120,
   nodeHeight: 180,
   branchDropZoneHeight: 60,
+  routineOffset: 120,
 };
 
 export const COLORS = {

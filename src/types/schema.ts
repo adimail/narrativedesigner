@@ -9,15 +9,9 @@ export const ScenarioIdSchema = z
 export type Day = number;
 export type Time = number;
 
-export type RouteEnum = "Common" | "Alyssa" | "Rhea" | "Natalie" | "OtherQuest";
+export type RouteEnum = string;
 
-export const RouteEnumSchema = z.enum([
-  "Common",
-  "Alyssa",
-  "Rhea",
-  "Natalie",
-  "OtherQuest",
-]);
+export const RouteEnumSchema = z.string();
 
 export const LoadInfoSchema = z.object({
   immediately: z.boolean(),
@@ -36,6 +30,7 @@ export const EndInfoSchema = z.object({
 export const ScenarioNodeSchema = z.object({
   id: z.string().uuid(),
   scenarioId: ScenarioIdSchema,
+  isRoutine: z.boolean().default(false),
   sortIndex: z.number(),
   branchIndex: z.number().optional(),
   description: z.string().optional(),

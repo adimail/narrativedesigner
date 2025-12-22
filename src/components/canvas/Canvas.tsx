@@ -1,10 +1,14 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { useStore } from "../../store/useStore";
 import { GridBackground } from "./GridBackground";
 import { ConnectionLayer } from "./ConnectionLayer";
 import { ScenarioNode } from "./ScenarioNode";
-import { getGridPositionFromCoordinates } from "../../lib/utils";
+import {
+  getGridPositionFromCoordinates,
+  getColumnLayout,
+  getRowLayout,
+} from "../../lib/utils";
 import { GRID_CONFIG } from "../../lib/constants";
 import { Button } from "../ui/button";
 import { Play, Plus } from "lucide-react";
@@ -14,8 +18,6 @@ import { Day, Time, RouteEnum } from "../../types/schema";
 export const Canvas = () => {
   const nodes = useStore((state) => state.nodes);
   const routes = useStore((state) => state.routes);
-  const layoutMap = useStore((state) => state.layoutMap);
-  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const moveNode = useStore((state) => state.moveNode);
   const selectNode = useStore((state) => state.selectNode);
   const clearSelection = useStore((state) => state.clearSelection);
@@ -29,6 +31,15 @@ export const Canvas = () => {
   const loadSampleData = useStore((state) => state.loadSampleData);
   const darkMode = useStore((state) => state.darkMode);
   const validateAll = useStore((state) => state.validateAll);
+
+  const layoutMap = useMemo(
+    () => getColumnLayout(nodes, routes),
+    [nodes, routes],
+  );
+  const rowLayoutMap = useMemo(
+    () => getRowLayout(nodes, routes),
+    [nodes, routes],
+  );
 
   const [connectingSourceId, setConnectingSourceId] = useState<string | null>(
     null,
@@ -287,8 +298,11 @@ export const Canvas = () => {
             onClick={handleCanvasClick}
             onContextMenu={handleContextMenu}
           >
-            <GridBackground />
-            <ConnectionLayer />
+            <GridBackground layoutMap={layoutMap} rowLayoutMap={rowLayoutMap} />
+            <ConnectionLayer
+              layoutMap={layoutMap}
+              rowLayoutMap={rowLayoutMap}
+            />
             <div className="absolute left-0 top-0 z-20 h-full w-full pointer-events-none">
               {nodes.map((node) => (
                 <ScenarioNode
@@ -298,6 +312,8 @@ export const Canvas = () => {
                   onMouseDown={handleMouseDown}
                   onConnectStart={handleConnectStart}
                   onConnectEnd={handleConnectEnd}
+                  layoutMap={layoutMap}
+                  rowLayoutMap={rowLayoutMap}
                 />
               ))}
             </div>

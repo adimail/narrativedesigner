@@ -75,6 +75,25 @@ export const PropertiesPanel = () => {
             }
           />
         </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="isRoutine"
+            className={cn(
+              "w-5 h-5 border-2 rounded-none focus:ring-0",
+              darkMode
+                ? "border-slate-400 bg-slate-700"
+                : "border-black text-black",
+            )}
+            checked={node.isRoutine}
+            onChange={(e) =>
+              updateNode(node.id, { isRoutine: e.target.checked })
+            }
+          />
+          <label htmlFor="isRoutine" className="text-sm font-bold">
+            ROUTINE SCENARIO
+          </label>
+        </div>
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase">
             Description (Internal)
@@ -105,7 +124,7 @@ export const PropertiesPanel = () => {
               darkMode ? "bg-slate-600 text-white" : "bg-black text-white",
             )}
           >
-            LOAD_CONFIG
+            LOAD AT THE START OF
           </h3>
           <div className="flex items-center gap-2">
             <input
@@ -209,7 +228,7 @@ export const PropertiesPanel = () => {
               darkMode ? "bg-slate-600 text-white" : "bg-black text-white",
             )}
           >
-            END_CONFIG
+            UNLOAD AT THE END OF
           </h3>
           <div className="flex items-center gap-2">
             <input

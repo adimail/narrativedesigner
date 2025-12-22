@@ -62,6 +62,7 @@ export const createNewNode = (
   return {
     id: uuidv4(),
     scenarioId,
+    isRoutine: false,
     sortIndex: maxSortIndex + 1,
     branchIndex: 0,
     description: "",
@@ -90,30 +91,45 @@ export const applyNodeUpdate = (
 ): ScenarioNode[] => {
   const nodeToUpdate = nodes.find((n) => n.id === id);
   if (!nodeToUpdate) return nodes;
+
   const oldId = nodeToUpdate.scenarioId;
   const newId = (data.scenarioId as ScenarioId) || oldId;
+
+  if (data.scenarioId && data.scenarioId !== oldId) {
+    const exists = nodes.some(
+      (n) => n.scenarioId === data.scenarioId && n.id !== id,
+    );
+    if (exists) return nodes;
+  }
+
   return nodes.map((n) => {
-    if (n.id === id) return { ...n, ...data };
-    if (oldId === newId) return n;
-    return {
-      ...n,
-      nextScenarios: n.nextScenarios.map((sid) =>
+    let updated = n.id === id ? { ...n, ...data } : { ...n };
+
+    if (oldId !== newId) {
+      updated.nextScenarios = updated.nextScenarios.map((sid) =>
         sid === oldId ? newId : sid,
-      ),
-      previousScenarios: n.previousScenarios.map((sid) =>
+      );
+      updated.previousScenarios = updated.previousScenarios.map((sid) =>
         sid === oldId ? newId : sid,
-      ),
-      loadInfo: {
-        ...n.loadInfo,
-        afterScenario:
-          n.loadInfo.afterScenario === oldId ? newId : n.loadInfo.afterScenario,
-      },
-      endInfo: {
-        ...n.endInfo,
-        afterScenario:
-          n.endInfo.afterScenario === oldId ? newId : n.endInfo.afterScenario,
-      },
-    };
+      );
+
+      if (updated.loadInfo.afterScenario === oldId) {
+        updated.loadInfo = { ...updated.loadInfo, afterScenario: newId };
+      }
+      if (updated.endInfo.afterScenario === oldId) {
+        updated.endInfo = { ...updated.endInfo, afterScenario: newId };
+      }
+
+      if (updated.edgeColors && updated.edgeColors[oldId]) {
+        const color = updated.edgeColors[oldId];
+        const newEdgeColors = { ...updated.edgeColors };
+        delete newEdgeColors[oldId];
+        newEdgeColors[newId] = color;
+        updated.edgeColors = newEdgeColors;
+      }
+    }
+
+    return updated;
   });
 };
 

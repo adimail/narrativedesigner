@@ -8,7 +8,7 @@ import {
   RouteEnum,
   ValidationIssue,
 } from "../types/schema";
-import { validateNode, getColumnLayout, getRowLayout } from "../lib/utils";
+import { validateNode } from "../lib/utils";
 import { DEFAULT_ROUTES } from "../lib/constants";
 import {
   createNewNode,
@@ -29,8 +29,6 @@ interface StoreState {
   isPropertiesPanelOpen: boolean;
   isValidationPanelOpen: boolean;
   darkMode: boolean;
-  layoutMap: ReturnType<typeof getColumnLayout>;
-  rowLayoutMap: ReturnType<typeof getRowLayout>;
   addNode: (day: Day, time: Time, route: RouteEnum) => void;
   updateNode: (id: string, data: Partial<ScenarioNode>) => void;
   moveNode: (
@@ -63,7 +61,7 @@ interface StoreState {
   toggleValidationPanel: () => void;
   toggleDarkMode: () => void;
   createBranch: (route: string) => number;
-  refreshLayout: () => void;
+  addRoute: (name: string) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -81,14 +79,9 @@ export const useStore = create<StoreState>()(
         isPropertiesPanelOpen: true,
         isValidationPanelOpen: true,
         darkMode: false,
-        layoutMap: getColumnLayout([], [...DEFAULT_ROUTES]),
-        rowLayoutMap: getRowLayout([], [...DEFAULT_ROUTES]),
-        refreshLayout: () => {
-          const { nodes, routes } = get();
-          set({
-            layoutMap: getColumnLayout(nodes, routes),
-            rowLayoutMap: getRowLayout(nodes, routes),
-          });
+        addRoute: (name) => {
+          if (!name || get().routes.includes(name)) return;
+          set((state) => ({ routes: [...state.routes, name] }));
         },
         setDraggingId: (id) => set({ draggingId: id }),
         setViewport: (x, y, w, h) => set({ viewport: { x, y, w, h } }),
@@ -107,17 +100,11 @@ export const useStore = create<StoreState>()(
         addNode: (day, time, route) => {
           const newNode = createNewNode(get().nodes, day, time, route);
           set((state) => ({ nodes: [...state.nodes, newNode] }));
-          get().refreshLayout();
           get().validateAll();
         },
         updateNode: (id, data) => {
           const updatedNodes = applyNodeUpdate(get().nodes, id, data);
           set({ nodes: updatedNodes });
-          const isStructural =
-            data.gridPosition ||
-            data.branchIndex !== undefined ||
-            data.sortIndex !== undefined;
-          if (isStructural) get().refreshLayout();
           get().validateAll();
         },
         moveNode: (id, day, time, route, targetIndex, branchIndex) => {
@@ -131,7 +118,6 @@ export const useStore = create<StoreState>()(
             branchIndex,
           );
           set({ nodes: updatedNodes });
-          get().refreshLayout();
           if (!get().draggingId) {
             get().validateAll();
           }
@@ -142,7 +128,6 @@ export const useStore = create<StoreState>()(
             nodes: updatedNodes,
             selectedNodeIds: state.selectedNodeIds.filter((sid) => sid !== id),
           }));
-          get().refreshLayout();
           get().validateAll();
         },
         selectNode: (id, multi) => {
@@ -239,12 +224,10 @@ export const useStore = create<StoreState>()(
         },
         importData: (data) => {
           set({ nodes: data });
-          get().refreshLayout();
           get().validateAll();
         },
         loadProject: (nodes) => {
           set({ nodes, selectedNodeIds: [], validationIssues: [] });
-          get().refreshLayout();
           get().validateAll();
         },
         loadSampleData: () => {
@@ -261,7 +244,6 @@ export const useStore = create<StoreState>()(
             selectedNodeIds: [],
             validationIssues: [],
           });
-          get().refreshLayout();
         },
         setScale: (scale) => set({ scale }),
         togglePropertiesPanel: () =>
@@ -278,15 +260,8 @@ export const useStore = create<StoreState>()(
         name: "scenariograph-storage",
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => {
-          const {
-            nodeMap,
-            validationIssues,
-            draggingId,
-            viewport,
-            layoutMap,
-            rowLayoutMap,
-            ...rest
-          } = state;
+          const { nodeMap, validationIssues, draggingId, viewport, ...rest } =
+            state;
           return rest;
         },
       },

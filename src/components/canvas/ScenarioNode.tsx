@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { ScenarioNode as NodeType } from "../../types/schema";
-import { getCoordinates, cn } from "../../lib/utils";
+import {
+  getCoordinates,
+  cn,
+  getColumnLayout,
+  getRowLayout,
+} from "../../lib/utils";
 import {
   GRID_CONFIG,
   PIN_COLORS_DARK,
@@ -10,7 +15,7 @@ import {
   TIMES,
 } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
-import { AlertTriangle, XCircle } from "lucide-react";
+import { AlertTriangle, XCircle, Clock } from "lucide-react";
 
 interface Props {
   node: NodeType;
@@ -18,6 +23,8 @@ interface Props {
   onMouseDown: (e: React.MouseEvent, id: string) => void;
   onConnectStart: (e: React.MouseEvent, id: string) => void;
   onConnectEnd: (e: React.MouseEvent, id: string) => void;
+  layoutMap: ReturnType<typeof getColumnLayout>;
+  rowLayoutMap: ReturnType<typeof getRowLayout>;
 }
 
 export const ScenarioNode = ({
@@ -26,11 +33,11 @@ export const ScenarioNode = ({
   onMouseDown,
   onConnectStart,
   onConnectEnd,
+  layoutMap,
+  rowLayoutMap,
 }: Props) => {
   const selectedNodeIds = useStore((state) => state.selectedNodeIds);
   const validationIssues = useStore((state) => state.validationIssues);
-  const layoutMap = useStore((state) => state.layoutMap);
-  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
   const darkMode = useStore((state) => state.darkMode);
   const [hoverSide, setHoverSide] = useState<"left" | "right">("right");
   const isSelected = selectedNodeIds.includes(node.id);
@@ -45,6 +52,7 @@ export const ScenarioNode = ({
     node.sortIndex || 0,
     layoutMap,
     rowLayoutMap,
+    node.isRoutine,
   );
   const pinSpacing = 24;
   const totalPins = node.nextScenarios.length;
@@ -67,7 +75,7 @@ export const ScenarioNode = ({
       className={cn(
         "absolute cursor-grab active:cursor-grabbing select-none flex flex-col border-2 transition-all duration-300 ease-in-out group font-mono rounded-md pointer-events-auto",
         isSelected
-          ? "shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] translate-x-[-2px] translate-y-[-2px] z-30"
+          ? "border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] translate-x-[-2px] translate-y-[-2px] z-30 border-[3px]"
           : "shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-20",
         hasError
           ? "border-red-600 bg-red-100 text-black"
@@ -81,7 +89,11 @@ export const ScenarioNode = ({
         width: GRID_CONFIG.nodeWidth,
         height: GRID_CONFIG.nodeHeight,
         backgroundColor: hasError || hasWarning ? undefined : bgColor,
-        borderColor: hasError || hasWarning ? undefined : borderColor,
+        borderColor: isSelected
+          ? undefined
+          : hasError || hasWarning
+            ? undefined
+            : borderColor,
         color: darkMode ? "white" : "black",
       }}
       onMouseDown={(e) => onMouseDown(e, node.id)}
@@ -96,15 +108,22 @@ export const ScenarioNode = ({
             : "border-black bg-white/40",
         )}
         style={{
-          borderColor: hasError || hasWarning ? undefined : borderColor,
+          borderColor: isSelected
+            ? undefined
+            : hasError || hasWarning
+              ? undefined
+              : borderColor,
         }}
       >
-        <span
-          className="text-[10px] font-bold truncate flex-1"
-          title={node.scenarioId}
-        >
-          {node.scenarioId}
-        </span>
+        <div className="flex items-center gap-1 truncate flex-1">
+          {node.isRoutine && <Clock className="w-3 h-3 text-blue-400" />}
+          <span
+            className="text-[10px] font-bold truncate"
+            title={node.scenarioId}
+          >
+            {node.scenarioId}
+          </span>
+        </div>
         <div className="flex gap-1">
           {hasError && <XCircle className="w-3 h-3 text-red-600" />}
           {hasWarning && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
@@ -117,7 +136,9 @@ export const ScenarioNode = ({
             darkMode ? "border-slate-500" : "border-black/30",
           )}
         >
-          <div className="text-[9px] font-bold opacity-70 mb-1">LOAD INFO</div>
+          <div className="text-[9px] font-bold opacity-70 mb-1 uppercase">
+            Load at the start of
+          </div>
           <div className="text-[10px] leading-tight">
             <div className="flex justify-between">
               <span>Mode:</span>
@@ -135,7 +156,9 @@ export const ScenarioNode = ({
           </div>
         </div>
         <div className="flex-1 p-2 bg-black/5">
-          <div className="text-[9px] font-bold opacity-70 mb-1">END INFO</div>
+          <div className="text-[9px] font-bold opacity-70 mb-1 uppercase">
+            Unload at the end of
+          </div>
           <div className="text-[10px] leading-tight">
             <div className="flex justify-between">
               <span>Mode:</span>

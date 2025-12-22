@@ -1,12 +1,15 @@
 import { DAYS, TIMES, GRID_CONFIG, COLORS } from "../../lib/constants";
 import { useStore } from "../../store/useStore";
-import { cn } from "../../lib/utils";
+import { cn, getColumnLayout, getRowLayout } from "../../lib/utils";
 
-export const GridBackground = () => {
+interface Props {
+  layoutMap: ReturnType<typeof getColumnLayout>;
+  rowLayoutMap: ReturnType<typeof getRowLayout>;
+}
+
+export const GridBackground = ({ layoutMap, rowLayoutMap }: Props) => {
   const darkMode = useStore((state) => state.darkMode);
   const routes = useStore((state) => state.routes);
-  const layoutMap = useStore((state) => state.layoutMap);
-  const rowLayoutMap = useStore((state) => state.rowLayoutMap);
 
   return (
     <div

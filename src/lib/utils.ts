@@ -17,6 +17,20 @@ export function getColumnLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
   const columnLayout: Record<string, { startX: number; width: number }> = {};
   let currentX = GRID_CONFIG.sidebarWidth;
 
+  const maxDay =
+    nodes.length > 0 ? Math.max(...nodes.map((n) => n.gridPosition.day)) : 0;
+  const maxTime =
+    nodes.length > 0
+      ? Math.max(
+          ...nodes
+            .filter((n) => n.gridPosition.day === maxDay)
+            .map((n) => n.gridPosition.time),
+        )
+      : 0;
+
+  const limitDay = Math.max(maxDay, 0);
+  const limitTime = Math.max(maxTime, 0);
+
   for (let d = 0; d < 28; d++) {
     for (let t = 0; t < 4; t++) {
       let maxNodesInSlot = 0;
@@ -50,17 +64,20 @@ export function getColumnLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
 export function getRowLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
   const rowLayout: Record<
     string,
-    { startY: number; height: number; maxBranch: number }
+    { startY: number; height: number; maxBranch: number; hasRoutine: boolean }
   > = {};
   let currentY = GRID_CONFIG.headerHeight;
   routes.forEach((route) => {
     const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
+    const hasRoutine = routeNodes.some((n) => n.isRoutine);
     const maxBranch = routeNodes.reduce(
       (max, n) => Math.max(max, n.branchIndex || 0),
       0,
     );
-    const height = GRID_CONFIG.rowHeight + maxBranch * GRID_CONFIG.branchHeight;
-    rowLayout[route] = { startY: currentY, height, maxBranch };
+    let height = GRID_CONFIG.rowHeight + maxBranch * GRID_CONFIG.branchHeight;
+    if (hasRoutine) height += GRID_CONFIG.routineOffset;
+
+    rowLayout[route] = { startY: currentY, height, maxBranch, hasRoutine };
     currentY += height;
   });
   return { rows: rowLayout, totalHeight: currentY };
@@ -74,6 +91,7 @@ export function getCoordinates(
   indexInSlot: number = 0,
   layoutMap?: ReturnType<typeof getColumnLayout>,
   rowLayoutMap?: ReturnType<typeof getRowLayout>,
+  isRoutine: boolean = false,
 ) {
   let x = 0;
   let y = 0;
@@ -83,6 +101,11 @@ export function getCoordinates(
       rowData.startY +
       branchIndex * GRID_CONFIG.branchHeight +
       (GRID_CONFIG.rowHeight - GRID_CONFIG.nodeHeight) / 2;
+    if (isRoutine) {
+      y +=
+        rowData.maxBranch * GRID_CONFIG.branchHeight +
+        GRID_CONFIG.routineOffset;
+    }
   } else {
     y = GRID_CONFIG.headerHeight + 20;
   }
