@@ -55,6 +55,8 @@ const ConnectionPath = React.memo(
     const customColor = source.edgeColors?.[target.scenarioId];
     const strokeColor = customColor || pinColors[pinIndex % pinColors.length];
 
+    const markerId = strokeColor.replace("#", "");
+
     return (
       <g className="pointer-events-auto group">
         <path
@@ -83,7 +85,7 @@ const ConnectionPath = React.memo(
           fill="none"
           stroke={strokeColor}
           strokeWidth="3"
-          markerEnd={`url(#arrowhead-${modeSuffix}-${pinIndex % pinColors.length})`}
+          markerEnd={`url(#arrowhead-${modeSuffix}-${markerId})`}
           className="transition-colors opacity-90 pointer-events-none"
         />
       </g>
@@ -221,10 +223,10 @@ export const ConnectionLayer = () => {
         }}
       >
         <defs>
-          {pinColors.map((color, i) => (
+          {pinColors.map((color) => (
             <marker
-              key={`${modeSuffix}-${i}`}
-              id={`arrowhead-${modeSuffix}-${i}`}
+              key={`${modeSuffix}-${color}`}
+              id={`arrowhead-${modeSuffix}-${color.replace("#", "")}`}
               markerWidth="10"
               markerHeight="7"
               refX="9"

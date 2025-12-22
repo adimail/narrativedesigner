@@ -157,8 +157,22 @@ export const ScenarioNode = ({
           </div>
         </div>
       </div>
-      {node.nextScenarios.map((_, index) => {
-        const color = pinColors[index % pinColors.length];
+      <div
+        className={cn(
+          "px-2 py-1.5 border-t border-dashed truncate text-[10px] italic shrink-0",
+          darkMode
+            ? "border-slate-500 bg-black/40 text-slate-300"
+            : "border-black/20 bg-white/40 text-slate-700",
+        )}
+        title={node.description || undefined}
+      >
+        {node.description || (
+          <span className="opacity-30">No description...</span>
+        )}
+      </div>
+      {node.nextScenarios.map((targetId, index) => {
+        const customColor = node.edgeColors?.[targetId];
+        const color = customColor || pinColors[index % pinColors.length];
         return (
           <div
             key={index}
