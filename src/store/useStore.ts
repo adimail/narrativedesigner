@@ -61,7 +61,6 @@ interface StoreState {
   toggleValidationPanel: () => void;
   toggleDarkMode: () => void;
   createBranch: (route: string) => number;
-  addRoute: (name: string) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -79,10 +78,6 @@ export const useStore = create<StoreState>()(
         isPropertiesPanelOpen: true,
         isValidationPanelOpen: true,
         darkMode: false,
-        addRoute: (name) => {
-          if (!name || get().routes.includes(name)) return;
-          set((state) => ({ routes: [...state.routes, name] }));
-        },
         setDraggingId: (id) => set({ draggingId: id }),
         setViewport: (x, y, w, h) => set({ viewport: { x, y, w, h } }),
         createBranch: (route) => {

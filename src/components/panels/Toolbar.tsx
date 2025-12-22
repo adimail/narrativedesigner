@@ -24,18 +24,12 @@ export const Toolbar = () => {
   const darkMode = useStore((state) => state.darkMode);
   const toggleDarkMode = useStore((state) => state.toggleDarkMode);
   const clearAll = useStore((state) => state.clearAll);
-  const addRoute = useStore((state) => state.addRoute);
 
   const undo = () => useStore.temporal.getState().undo();
   const redo = () => useStore.temporal.getState().redo();
 
   const handleSaveProject = () => {
     downloadJson(nodes, "project.json");
-  };
-
-  const handleAddRoute = () => {
-    const name = window.prompt("Enter new route name:");
-    if (name) addRoute(name);
   };
 
   const handleLoadProject = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,11 +146,6 @@ export const Toolbar = () => {
         </Button>
 
         <div className="h-8 w-px bg-gray-300 mx-2" />
-
-        <Button variant="default" size="sm" onClick={handleAddRoute}>
-          <PlusCircle className="w-4 h-4 mr-2" />
-          ADD ROUTE
-        </Button>
 
         <Button variant="default" size="sm" onClick={handleSaveProject}>
           <Save className="w-4 h-4 mr-2" />
