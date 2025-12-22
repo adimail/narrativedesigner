@@ -181,7 +181,8 @@ export function getGridPositionFromCoordinates(
 
 export function validateNode(
   node: ScenarioNode,
-  allNodes: ScenarioNode[],
+  nodeMap: Map<string, ScenarioNode>,
+  duplicateIds: Set<string>,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const dayIndex = DAYS.indexOf(node.gridPosition.day);
@@ -196,10 +197,7 @@ export function validateNode(
     });
   }
 
-  const duplicates = allNodes.filter(
-    (n) => n.scenarioId === node.scenarioId && n.id !== node.id,
-  );
-  if (duplicates.length > 0) {
+  if (duplicateIds.has(node.scenarioId)) {
     issues.push({
       nodeId: node.id,
       type: "error",
@@ -208,7 +206,7 @@ export function validateNode(
   }
 
   node.nextScenarios.forEach((nextId) => {
-    const targetNode = allNodes.find((n) => n.scenarioId === nextId);
+    const targetNode = nodeMap.get(nextId);
     if (!targetNode) {
       issues.push({
         nodeId: node.id,

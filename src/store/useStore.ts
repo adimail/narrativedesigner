@@ -22,6 +22,7 @@ interface StoreState {
   darkMode: boolean;
   layoutMap: ReturnType<typeof getColumnLayout>;
   rowLayoutMap: ReturnType<typeof getRowLayout>;
+  nodeMap: Map<string, ScenarioNode>;
 
   addNode: (day: DayEnum, time: TimeEnum, route: RouteEnum) => void;
   updateNode: (id: string, data: Partial<ScenarioNode>) => void;
@@ -49,6 +50,7 @@ interface StoreState {
   toggleDarkMode: () => void;
   createBranch: (route: string) => number;
   refreshLayout: () => void;
+  refreshNodeMap: () => void;
 }
 
 const normalizeBranches = (
@@ -90,6 +92,14 @@ export const useStore = create<StoreState>()(
       darkMode: false,
       layoutMap: getColumnLayout([], [...DEFAULT_ROUTES]),
       rowLayoutMap: getRowLayout([], [...DEFAULT_ROUTES]),
+      nodeMap: new Map(),
+
+      refreshNodeMap: () => {
+        const { nodes } = get();
+        const newMap = new Map<string, ScenarioNode>();
+        nodes.forEach((n) => newMap.set(n.scenarioId, n));
+        set({ nodeMap: newMap });
+      },
 
       refreshLayout: () => {
         const { nodes, routes } = get();
@@ -161,6 +171,7 @@ export const useStore = create<StoreState>()(
           previousScenarios: [],
         };
         set((state) => ({ nodes: [...state.nodes, newNode] }));
+        get().refreshNodeMap();
         get().refreshLayout();
         get().validateAll();
       },
@@ -173,7 +184,8 @@ export const useStore = create<StoreState>()(
         const isStructuralChange =
           data.gridPosition !== undefined ||
           data.branchIndex !== undefined ||
-          data.sortIndex !== undefined;
+          data.sortIndex !== undefined ||
+          data.scenarioId !== undefined;
 
         if (!data.scenarioId || data.scenarioId === nodeToUpdate.scenarioId) {
           set((state) => ({
@@ -214,7 +226,10 @@ export const useStore = create<StoreState>()(
           }));
         }
 
-        if (isStructuralChange) get().refreshLayout();
+        if (isStructuralChange) {
+          get().refreshNodeMap();
+          get().refreshLayout();
+        }
         get().validateAll();
       },
 
@@ -308,6 +323,7 @@ export const useStore = create<StoreState>()(
             normalized = normalizeBranches(normalized, route);
           return { nodes: normalized };
         });
+        get().refreshNodeMap();
         get().refreshLayout();
         get().validateAll();
       },
@@ -334,6 +350,7 @@ export const useStore = create<StoreState>()(
             selectedNodeIds: state.selectedNodeIds.filter((sid) => sid !== id),
           };
         });
+        get().refreshNodeMap();
         get().refreshLayout();
         get().validateAll();
       },
@@ -373,6 +390,7 @@ export const useStore = create<StoreState>()(
             return n;
           }),
         }));
+        get().refreshNodeMap();
         get().validateAll();
       },
 
@@ -401,23 +419,38 @@ export const useStore = create<StoreState>()(
             return n;
           }),
         }));
+        get().refreshNodeMap();
         get().validateAll();
       },
 
       validateAll: () => {
-        const { nodes } = get();
-        const issues = nodes.flatMap((n) => validateNode(n, nodes));
+        const { nodes, nodeMap } = get();
+        const counts = new Map<string, number>();
+        nodes.forEach((n) =>
+          counts.set(n.scenarioId, (counts.get(n.scenarioId) || 0) + 1),
+        );
+        const duplicateIds = new Set(
+          Array.from(counts.entries())
+            .filter(([_, c]) => c > 1)
+            .map(([id]) => id),
+        );
+
+        const issues = nodes.flatMap((n) =>
+          validateNode(n, nodeMap, duplicateIds),
+        );
         set({ validationIssues: issues });
       },
 
       importData: (data) => {
         set({ nodes: data });
+        get().refreshNodeMap();
         get().refreshLayout();
         get().validateAll();
       },
 
       loadProject: (nodes) => {
         set({ nodes, selectedNodeIds: [], validationIssues: [] });
+        get().refreshNodeMap();
         get().refreshLayout();
         get().validateAll();
       },
@@ -495,6 +528,7 @@ export const useStore = create<StoreState>()(
           },
         ];
         set({ nodes: sampleNodes, selectedNodeIds: [], validationIssues: [] });
+        get().refreshNodeMap();
         get().refreshLayout();
         get().validateAll();
       },
@@ -505,6 +539,7 @@ export const useStore = create<StoreState>()(
           routes: [...DEFAULT_ROUTES],
           selectedNodeIds: [],
           validationIssues: [],
+          nodeMap: new Map(),
         });
         get().refreshLayout();
       },
@@ -523,6 +558,10 @@ export const useStore = create<StoreState>()(
     {
       name: "scenariograph-storage",
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => {
+        const { nodeMap, ...rest } = state;
+        return rest;
+      },
     },
   ),
 );
