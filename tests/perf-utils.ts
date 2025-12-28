@@ -5,7 +5,8 @@ export const getRandomPosition = () => {
   const time = Math.floor(Math.random() * 4);
   const routes = ["Common", "Alyssa", "Rhea", "Natalie", "OtherQuest"];
   const route = routes[Math.floor(Math.random() * routes.length)];
-  return { day, time, route };
+  const isRoutine = Math.random() > 0.7;
+  return { day, time, route, isRoutine };
 };
 
 export const collectMetrics = async (page: Page) => {

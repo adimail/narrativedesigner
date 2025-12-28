@@ -15,10 +15,11 @@ test("Simulate Realistic Interaction Flow", async ({ page }) => {
   });
 
   for (let i = 0; i < SIMULATION_CONFIG.SIMULATE_MOVES_INITIAL_NODES; i++) {
-    const { day, time, route } = getRandomPosition();
+    const { day, time, route, isRoutine } = getRandomPosition();
     await page.evaluate(
-      ({ d, t, r }) => (window as any).useStore.getState().addNode(d, t, r),
-      { d: day, t: time, r: route },
+      ({ d, t, r, isRoutine }) =>
+        (window as any).useStore.getState().addNode(d, t, r, isRoutine),
+      { d: day, t: time, r: route, isRoutine },
     );
   }
 
@@ -40,9 +41,17 @@ test("Simulate Realistic Interaction Flow", async ({ page }) => {
     const pos = getRandomPosition();
 
     await page.evaluate(
-      ({ id, d, t, r }) =>
-        (window as any).useStore.getState().moveNode(id, d, t, r, 0, 0),
-      { id: moveId, d: pos.day, t: pos.time, r: pos.route },
+      ({ id, d, t, r, isRoutine }) =>
+        (window as any).useStore
+          .getState()
+          .moveNode(id, d, t, r, 0, 0, isRoutine),
+      {
+        id: moveId,
+        d: pos.day,
+        t: pos.time,
+        r: pos.route,
+        isRoutine: pos.isRoutine,
+      },
     );
 
     if (i % 10 === 0) {
@@ -57,8 +66,14 @@ test("Simulate Realistic Interaction Flow", async ({ page }) => {
     if (i % 20 === 0) {
       const newPos = getRandomPosition();
       await page.evaluate(
-        ({ d, t, r }) => (window as any).useStore.getState().addNode(d, t, r),
-        { d: newPos.day, t: newPos.time, r: newPos.route },
+        ({ d, t, r, isRoutine }) =>
+          (window as any).useStore.getState().addNode(d, t, r, isRoutine),
+        {
+          d: newPos.day,
+          t: newPos.time,
+          r: newPos.route,
+          isRoutine: newPos.isRoutine,
+        },
       );
 
       nodeIds = await page.evaluate(() =>

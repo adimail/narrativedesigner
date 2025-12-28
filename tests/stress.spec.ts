@@ -18,12 +18,12 @@ test.describe("Full System Stress Test", () => {
     const metrics: any[] = [];
 
     for (let i = 1; i <= SIMULATION_CONFIG.STRESS_TEST_NODES; i++) {
-      const { day, time, route } = getRandomPosition();
+      const { day, time, route, isRoutine } = getRandomPosition();
       await page.evaluate(
-        ({ d, t, r }) => {
-          (window as any).useStore.getState().addNode(d, t, r);
+        ({ d, t, r, isRoutine }) => {
+          (window as any).useStore.getState().addNode(d, t, r, isRoutine);
         },
-        { d: day, t: time, r: route },
+        { d: day, t: time, r: route, isRoutine },
       );
 
       if (i % SIMULATION_CONFIG.STRESS_SCREENSHOT_INTERVAL === 0) {
@@ -46,13 +46,15 @@ test.describe("Full System Stress Test", () => {
 
     for (let i = 0; i < SIMULATION_CONFIG.STRESS_TEST_INTERACTIONS; i++) {
       const id = nodeIds[Math.floor(Math.random() * nodeIds.length)];
-      const { day, time, route } = getRandomPosition();
+      const { day, time, route, isRoutine } = getRandomPosition();
 
       await page.evaluate(
-        ({ id, d, t, r }) => {
-          (window as any).useStore.getState().moveNode(id, d, t, r, 0, 0);
+        ({ id, d, t, r, isRoutine }) => {
+          (window as any).useStore
+            .getState()
+            .moveNode(id, d, t, r, 0, 0, isRoutine);
         },
-        { id, d: day, t: time, r: route },
+        { id, d: day, t: time, r: route, isRoutine },
       );
 
       if (i % 50 === 0) await page.waitForTimeout(50);

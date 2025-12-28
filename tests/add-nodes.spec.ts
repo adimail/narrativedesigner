@@ -15,13 +15,13 @@ test("Progressive Add Nodes", async ({ page }) => {
   });
 
   for (let i = 1; i <= SIMULATION_CONFIG.ADD_NODES_TOTAL; i++) {
-    const { day, time, route } = getRandomPosition();
+    const { day, time, route, isRoutine } = getRandomPosition();
 
     await page.evaluate(
-      ({ d, t, r }) => {
-        (window as any).useStore.getState().addNode(d, t, r);
+      ({ d, t, r, isRoutine }) => {
+        (window as any).useStore.getState().addNode(d, t, r, isRoutine);
       },
-      { d: day, t: time, r: route },
+      { d: day, t: time, r: route, isRoutine },
     );
 
     if (i % SIMULATION_CONFIG.PROGRESS_CHECK_INTERVAL === 0) {
