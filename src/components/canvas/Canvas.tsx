@@ -98,14 +98,14 @@ export const Canvas = () => {
       const scale = useStore.getState().scale;
       const x = (e.clientX - rect.left) / scale;
       const y = (e.clientY - rect.top) / scale;
-      const { day, time, route } = getGridPositionFromCoordinates(
+      const { day, time, route, isRoutine } = getGridPositionFromCoordinates(
         x,
         y,
         layoutMap,
         rowLayoutMap,
         routes,
       );
-      addNode(day, time, route);
+      addNode(day, time, route, isRoutine);
       return;
     }
     if (e.target === e.currentTarget) clearSelection();
@@ -138,25 +138,39 @@ export const Canvas = () => {
         (n) =>
           n.gridPosition.day === day &&
           n.gridPosition.time === time &&
-          n.gridPosition.route === route,
+          n.gridPosition.route === route &&
+          !n.isRoutine,
       ).length;
+
       let targetBranch = 0;
+      let isRoutineTarget = false;
+
       if (rowData) {
-        const relativeY = y - rowData.startY;
-        targetBranch = Math.floor(relativeY / GRID_CONFIG.branchHeight);
-        if (targetBranch < 0) targetBranch = 0;
+        if (y >= rowData.routineStartY) {
+          isRoutineTarget = true;
+        } else {
+          const relativeY = y - rowData.startY;
+          targetBranch = Math.floor(relativeY / GRID_CONFIG.branchHeight);
+          if (targetBranch < 0) targetBranch = 0;
+        }
       }
+
       if (
+        !isRoutineTarget &&
         nodesInCellCount > 1 &&
         rowData &&
         colData &&
-        y > rowData.startY + rowData.height - GRID_CONFIG.branchDropZoneHeight
+        y >
+          rowData.startY +
+            rowData.mainHeight -
+            GRID_CONFIG.branchDropZoneHeight &&
+        y < rowData.routineStartY
       ) {
         setBranchDropTarget({
           day,
           time,
           route,
-          y: rowData.startY + rowData.height,
+          y: rowData.startY + rowData.mainHeight,
           x: colData.startX,
           width: colData.width,
         });
@@ -165,6 +179,7 @@ export const Canvas = () => {
         if (rowData && targetBranch > rowData.maxBranch)
           targetBranch = rowData.maxBranch;
       }
+
       let targetIndex = 0;
       if (colData) {
         const relativeX = x - colData.startX;
@@ -172,7 +187,15 @@ export const Canvas = () => {
         targetIndex = Math.floor(relativeX / slotWidth);
         if (targetIndex < 0) targetIndex = 0;
       }
-      moveNode(draggingId, day, time, route, targetIndex, targetBranch);
+      moveNode(
+        draggingId,
+        day,
+        time,
+        route,
+        targetIndex,
+        targetBranch,
+        isRoutineTarget,
+      );
     }
   };
 
@@ -189,6 +212,7 @@ export const Canvas = () => {
           branchDropTarget.route,
           0,
           newBranchIndex,
+          false,
         );
       }
       const finalNodes = useStore.getState().nodes;

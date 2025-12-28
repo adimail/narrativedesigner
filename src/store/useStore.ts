@@ -29,7 +29,12 @@ interface StoreState {
   isPropertiesPanelOpen: boolean;
   isValidationPanelOpen: boolean;
   darkMode: boolean;
-  addNode: (day: Day, time: Time, route: RouteEnum) => void;
+  addNode: (
+    day: Day,
+    time: Time,
+    route: RouteEnum,
+    isRoutine?: boolean,
+  ) => void;
   updateNode: (id: string, data: Partial<ScenarioNode>) => void;
   moveNode: (
     id: string,
@@ -38,6 +43,7 @@ interface StoreState {
     route: RouteEnum,
     targetIndex?: number,
     branchIndex?: number,
+    isRoutine?: boolean,
   ) => void;
   deleteNode: (id: string) => void;
   selectNode: (id: string, multi: boolean) => void;
@@ -83,7 +89,7 @@ export const useStore = create<StoreState>()(
         createBranch: (route) => {
           const { nodes } = get();
           const routeNodes = nodes.filter(
-            (n) => n.gridPosition.route === route,
+            (n) => n.gridPosition.route === route && !n.isRoutine,
           );
           return (
             routeNodes.reduce(
@@ -92,8 +98,14 @@ export const useStore = create<StoreState>()(
             ) + 1
           );
         },
-        addNode: (day, time, route) => {
-          const newNode = createNewNode(get().nodes, day, time, route);
+        addNode: (day, time, route, isRoutine = false) => {
+          const newNode = createNewNode(
+            get().nodes,
+            day,
+            time,
+            route,
+            isRoutine,
+          );
           set((state) => ({ nodes: [...state.nodes, newNode] }));
           get().validateAll();
         },
@@ -102,7 +114,15 @@ export const useStore = create<StoreState>()(
           set({ nodes: updatedNodes });
           get().validateAll();
         },
-        moveNode: (id, day, time, route, targetIndex, branchIndex) => {
+        moveNode: (
+          id,
+          day,
+          time,
+          route,
+          targetIndex,
+          branchIndex,
+          isRoutine = false,
+        ) => {
           const updatedNodes = calculateMove(
             get().nodes,
             id,
@@ -111,6 +131,7 @@ export const useStore = create<StoreState>()(
             route,
             targetIndex,
             branchIndex,
+            isRoutine,
           );
           set({ nodes: updatedNodes });
           if (!get().draggingId) {

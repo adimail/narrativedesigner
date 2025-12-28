@@ -75,21 +75,38 @@ export function getColumnLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
 export function getRowLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
   const rowLayout: Record<
     string,
-    { startY: number; height: number; maxBranch: number; hasRoutine: boolean }
+    {
+      startY: number;
+      height: number;
+      maxBranch: number;
+      mainHeight: number;
+      routineStartY: number;
+    }
   > = {};
   let currentY = GRID_CONFIG.headerHeight;
   routes.forEach((route) => {
-    const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
-    const hasRoutine = routeNodes.some((n) => n.isRoutine);
+    // Only consider non-routine nodes for calculating branch height
+    const routeNodes = nodes.filter(
+      (n) => n.gridPosition.route === route && !n.isRoutine,
+    );
     const maxBranch = routeNodes.reduce(
       (max, n) => Math.max(max, n.branchIndex || 0),
       0,
     );
-    let height = GRID_CONFIG.rowHeight + maxBranch * GRID_CONFIG.branchHeight;
-    if (hasRoutine) height += GRID_CONFIG.routineOffset;
 
-    rowLayout[route] = { startY: currentY, height, maxBranch, hasRoutine };
-    currentY += height;
+    const mainHeight =
+      GRID_CONFIG.rowHeight + maxBranch * GRID_CONFIG.branchHeight;
+    const routineStartY = currentY + mainHeight;
+    const totalHeight = mainHeight + GRID_CONFIG.routineLaneHeight;
+
+    rowLayout[route] = {
+      startY: currentY,
+      height: totalHeight,
+      maxBranch,
+      mainHeight,
+      routineStartY,
+    };
+    currentY += totalHeight;
   });
   return { rows: rowLayout, totalHeight: currentY };
 }
@@ -108,14 +125,15 @@ export function getCoordinates(
   let y = 0;
   if (rowLayoutMap && rowLayoutMap.rows[route]) {
     const rowData = rowLayoutMap.rows[route];
-    y =
-      rowData.startY +
-      branchIndex * GRID_CONFIG.branchHeight +
-      (GRID_CONFIG.rowHeight - GRID_CONFIG.nodeHeight) / 2;
     if (isRoutine) {
-      y +=
-        rowData.maxBranch * GRID_CONFIG.branchHeight +
-        GRID_CONFIG.routineOffset;
+      y =
+        rowData.routineStartY +
+        (GRID_CONFIG.routineLaneHeight - GRID_CONFIG.nodeHeight) / 2;
+    } else {
+      y =
+        rowData.startY +
+        branchIndex * GRID_CONFIG.branchHeight +
+        (GRID_CONFIG.rowHeight - GRID_CONFIG.nodeHeight) / 2;
     }
   } else {
     y = GRID_CONFIG.headerHeight + 20;
@@ -149,20 +167,26 @@ export function getGridPositionFromCoordinates(
   let foundRoute = routes[0];
   let foundDay = 0;
   let foundTime = 0;
+  let isRoutine = false;
+
   for (const route of routes) {
     const rowData = rowLayoutMap.rows[route];
     if (y >= rowData.startY && y < rowData.startY + rowData.height) {
       foundRoute = route;
+      if (y >= rowData.routineStartY) {
+        isRoutine = true;
+      }
       break;
     }
   }
   const lastRoute = routes[routes.length - 1];
-  if (
-    y >=
-    rowLayoutMap.rows[lastRoute].startY + rowLayoutMap.rows[lastRoute].height
-  ) {
+  const lastRowData = rowLayoutMap.rows[lastRoute];
+  if (y >= lastRowData.startY + lastRowData.height) {
     foundRoute = lastRoute;
+    // If way below, assume routine of last route
+    isRoutine = true;
   }
+
   for (let d = 0; d < 28; d++) {
     for (let t = 0; t < 4; t++) {
       const key = `${d}-${t}`;
@@ -174,7 +198,7 @@ export function getGridPositionFromCoordinates(
       }
     }
   }
-  return { day: foundDay, time: foundTime, route: foundRoute };
+  return { day: foundDay, time: foundTime, route: foundRoute, isRoutine };
 }
 
 export function validateNode(

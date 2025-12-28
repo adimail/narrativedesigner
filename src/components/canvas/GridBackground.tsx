@@ -22,14 +22,29 @@ export const GridBackground = ({ layoutMap, rowLayoutMap }: Props) => {
       {routes.map((route) => {
         const rowData = rowLayoutMap.rows[route];
         return (
-          <div
-            key={route}
-            className={cn(
-              "absolute w-full border-b transition-all duration-300 ease-in-out",
-              darkMode ? "border-slate-500" : "border-gray-500",
-            )}
-            style={{ top: rowData.startY, height: rowData.height }}
-          />
+          <div key={route}>
+            {/* Main Row Background */}
+            <div
+              className={cn(
+                "absolute w-full border-b transition-all duration-300 ease-in-out",
+                darkMode ? "border-slate-500" : "border-gray-500",
+              )}
+              style={{ top: rowData.startY, height: rowData.mainHeight }}
+            />
+            {/* Routine Row Background */}
+            <div
+              className={cn(
+                "absolute w-full border-b transition-all duration-300 ease-in-out",
+                darkMode
+                  ? "border-slate-500 bg-slate-800/30"
+                  : "border-gray-500 bg-gray-100/50",
+              )}
+              style={{
+                top: rowData.routineStartY,
+                height: GRID_CONFIG.routineLaneHeight,
+              }}
+            />
+          </div>
         );
       })}
       {Array.from({ length: 28 }).map((_, d) =>
@@ -108,22 +123,39 @@ export const GridBackground = ({ layoutMap, rowLayoutMap }: Props) => {
       {routes.map((route) => {
         const rowData = rowLayoutMap.rows[route];
         return (
-          <div
-            key={route}
-            className={cn(
-              "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20 transition-all duration-300 ease-in-out",
-              darkMode
-                ? "bg-slate-800 text-white border-slate-500"
-                : "bg-gray-100 text-black border-black",
-            )}
-            style={{
-              left: 0,
-              top: rowData.startY,
-              width: GRID_CONFIG.sidebarWidth,
-              height: rowData.height,
-            }}
-          >
-            {route}
+          <div key={route}>
+            <div
+              className={cn(
+                "absolute border-b border-r flex items-center justify-center text-sm font-bold z-20 transition-all duration-300 ease-in-out",
+                darkMode
+                  ? "bg-slate-800 text-white border-slate-500"
+                  : "bg-gray-100 text-black border-black",
+              )}
+              style={{
+                left: 0,
+                top: rowData.startY,
+                width: GRID_CONFIG.sidebarWidth,
+                height: rowData.mainHeight,
+              }}
+            >
+              {route}
+            </div>
+            <div
+              className={cn(
+                "absolute border-b border-r flex items-center justify-center text-xs font-bold z-20 transition-all duration-300 ease-in-out italic",
+                darkMode
+                  ? "bg-slate-800/80 text-slate-300 border-slate-500"
+                  : "bg-gray-200 text-gray-600 border-black",
+              )}
+              style={{
+                left: 0,
+                top: rowData.routineStartY,
+                width: GRID_CONFIG.sidebarWidth,
+                height: GRID_CONFIG.routineLaneHeight,
+              }}
+            >
+              Routine
+            </div>
           </div>
         );
       })}

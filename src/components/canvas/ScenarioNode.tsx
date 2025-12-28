@@ -61,7 +61,16 @@ export const ScenarioNode = ({
   const pinColors = darkMode ? PIN_COLORS_DARK : PIN_COLORS_LIGHT;
   const routeColor =
     ROUTE_COLORS[node.gridPosition.route] || ROUTE_COLORS.Common;
-  const bgColor = darkMode ? routeColor.dark : routeColor.light;
+
+  // Adjust color for routine nodes
+  let bgColor = darkMode ? routeColor.dark : routeColor.light;
+  if (node.isRoutine) {
+    // Darken/Desaturate slightly for routine
+    // This is a simple CSS filter approach via style or class, but here we are using inline hex.
+    // For simplicity, we rely on the lane background for major distinction,
+    // but we can add a visual marker or slight opacity.
+  }
+
   const borderColor = routeColor.border;
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isConnecting) {
@@ -82,6 +91,7 @@ export const ScenarioNode = ({
           : hasWarning
             ? "border-yellow-600 bg-yellow-100 text-black"
             : "",
+        node.isRoutine && !hasError && !hasWarning ? "brightness-90" : "",
       )}
       style={{
         left: coords.x,

@@ -23,7 +23,7 @@ export const GRID_CONFIG = {
   sidebarWidth: 120,
   nodeHeight: 180,
   branchDropZoneHeight: 60,
-  routineOffset: 120,
+  routineLaneHeight: 220,
 };
 
 export const COLORS = {

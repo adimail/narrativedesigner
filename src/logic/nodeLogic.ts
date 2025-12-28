@@ -26,18 +26,27 @@ export const normalizeBranches = (
   nodes: ScenarioNode[],
   route: RouteEnum,
 ): ScenarioNode[] => {
-  const routeNodes = nodes.filter((n) => n.gridPosition.route === route);
-  const otherNodes = nodes.filter((n) => n.gridPosition.route !== route);
+  // Only normalize non-routine nodes
+  const routeNodes = nodes.filter(
+    (n) => n.gridPosition.route === route && !n.isRoutine,
+  );
+  const otherNodes = nodes.filter(
+    (n) => n.gridPosition.route !== route || n.isRoutine,
+  );
+
   if (routeNodes.length === 0) return nodes;
+
   const usedBranches = Array.from(
     new Set(routeNodes.map((n) => n.branchIndex || 0)),
   ).sort((a, b) => a - b);
   const branchMap = new Map<number, number>();
   usedBranches.forEach((oldIdx, newIdx) => branchMap.set(oldIdx, newIdx));
+
   const updatedRouteNodes = routeNodes.map((n) => ({
     ...n,
     branchIndex: branchMap.get(n.branchIndex || 0) || 0,
   }));
+
   return [...otherNodes, ...updatedRouteNodes];
 };
 
@@ -46,6 +55,7 @@ export const createNewNode = (
   day: Day,
   time: Time,
   route: RouteEnum,
+  isRoutine: boolean = false,
 ): ScenarioNode => {
   const scenarioId = generateScenarioId(nodes, day, route);
   const existingInCell = nodes.filter(
@@ -53,6 +63,7 @@ export const createNewNode = (
       n.gridPosition.day === day &&
       n.gridPosition.time === time &&
       n.gridPosition.route === route &&
+      n.isRoutine === isRoutine &&
       (n.branchIndex || 0) === 0,
   );
   const maxSortIndex = existingInCell.reduce(
@@ -62,7 +73,7 @@ export const createNewNode = (
   return {
     id: uuidv4(),
     scenarioId,
-    isRoutine: false,
+    isRoutine: isRoutine,
     sortIndex: maxSortIndex + 1,
     branchIndex: 0,
     description: "",
@@ -141,6 +152,7 @@ export const calculateMove = (
   route: RouteEnum,
   targetIndex: number = 0,
   branchIndex: number = 0,
+  isRoutine: boolean = false,
 ): ScenarioNode[] => {
   const nodeToMove = nodes.find((n) => n.id === id);
   if (!nodeToMove) return nodes;
@@ -152,7 +164,8 @@ export const calculateMove = (
       n.gridPosition.day === day &&
       n.gridPosition.time === time &&
       n.gridPosition.route === route &&
-      (n.branchIndex || 0) === branchIndex &&
+      n.isRoutine === isRoutine &&
+      (n.branchIndex || 0) === (isRoutine ? 0 : branchIndex) &&
       (n.sortIndex || 0) === targetIndex,
   );
 
@@ -162,7 +175,8 @@ export const calculateMove = (
         n.gridPosition.day === day &&
         n.gridPosition.time === time &&
         n.gridPosition.route === route &&
-        (n.branchIndex || 0) === branchIndex &&
+        n.isRoutine === isRoutine &&
+        (n.branchIndex || 0) === (isRoutine ? 0 : branchIndex) &&
         (n.sortIndex || 0) >= targetIndex
       ) {
         return { ...n, sortIndex: (n.sortIndex || 0) + 1 };
@@ -174,8 +188,9 @@ export const calculateMove = (
   const updatedNode = {
     ...nodeToMove,
     gridPosition: { day, time, route },
-    branchIndex: branchIndex,
+    branchIndex: isRoutine ? 0 : branchIndex,
     sortIndex: targetIndex,
+    isRoutine: isRoutine,
     loadInfo:
       nodeToMove.id === id
         ? { ...nodeToMove.loadInfo, atDay: day, atTime: time }
