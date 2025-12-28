@@ -28,12 +28,10 @@ export function getColumnLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
         )
       : 0;
 
-  const limitDay = Math.max(maxDay, 0);
-  const limitTime = Math.max(maxTime, 0);
-
   for (let d = 0; d < 28; d++) {
     for (let t = 0; t < 4; t++) {
-      let maxNodesInSlot = 0;
+      let maxSortIndexInSlot = -1;
+
       routes.forEach((route) => {
         const cellNodes = nodes.filter(
           (n) =>
@@ -41,19 +39,32 @@ export function getColumnLayout(nodes: ScenarioNode[], routes: RouteEnum[]) {
             n.gridPosition.time === t &&
             n.gridPosition.route === route,
         );
-        const branchCounts: Record<number, number> = {};
-        cellNodes.forEach((n) => {
-          const bIdx = n.branchIndex || 0;
-          branchCounts[bIdx] = (branchCounts[bIdx] || 0) + 1;
-        });
-        const maxInAnyBranch = Math.max(0, ...Object.values(branchCounts));
-        if (maxInAnyBranch > maxNodesInSlot) maxNodesInSlot = maxInAnyBranch;
+
+        const branchMaxIndices: Record<number, number> = {};
+
+        if (cellNodes.length > 0) {
+          cellNodes.forEach((n) => {
+            const bIdx = n.branchIndex || 0;
+            const sIdx = n.sortIndex || 0;
+            branchMaxIndices[bIdx] = Math.max(
+              branchMaxIndices[bIdx] ?? -1,
+              sIdx,
+            );
+          });
+
+          const maxInRoute = Math.max(-1, ...Object.values(branchMaxIndices));
+          if (maxInRoute > maxSortIndexInSlot) {
+            maxSortIndexInSlot = maxInRoute;
+          }
+        }
       });
-      const effectiveCount = Math.max(1, maxNodesInSlot);
+
+      const effectiveCount = Math.max(1, maxSortIndexInSlot + 1);
       const requiredWidth =
         effectiveCount * GRID_CONFIG.nodeWidth +
         (effectiveCount + 1) * GRID_CONFIG.nodeGap;
       const width = Math.max(GRID_CONFIG.minColWidth, requiredWidth);
+
       columnLayout[`${d}-${t}`] = { startX: currentX, width };
       currentX += width;
     }

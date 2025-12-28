@@ -139,83 +139,56 @@ export const calculateMove = (
   day: Day,
   time: Time,
   route: RouteEnum,
-  targetIndex?: number,
-  branchIndex?: number,
+  targetIndex: number = 0,
+  branchIndex: number = 0,
 ): ScenarioNode[] => {
   const nodeToMove = nodes.find((n) => n.id === id);
   if (!nodeToMove) return nodes;
-  const oldDay = nodeToMove.gridPosition.day;
-  const oldTime = nodeToMove.gridPosition.time;
-  const oldRoute = nodeToMove.gridPosition.route;
-  const oldBranch = nodeToMove.branchIndex || 0;
-  const targetBranch =
-    branchIndex !== undefined
-      ? branchIndex
-      : route === oldRoute
-        ? oldBranch
-        : 0;
-  const isSameSlot =
-    oldDay === day &&
-    oldTime === time &&
-    oldRoute === route &&
-    oldBranch === targetBranch;
-  const targetSiblings = nodes
-    .filter(
-      (n) =>
-        n.id !== id &&
+
+  let otherNodes = nodes.filter((n) => n.id !== id);
+
+  const collision = otherNodes.some(
+    (n) =>
+      n.gridPosition.day === day &&
+      n.gridPosition.time === time &&
+      n.gridPosition.route === route &&
+      (n.branchIndex || 0) === branchIndex &&
+      (n.sortIndex || 0) === targetIndex,
+  );
+
+  if (collision) {
+    otherNodes = otherNodes.map((n) => {
+      if (
         n.gridPosition.day === day &&
         n.gridPosition.time === time &&
         n.gridPosition.route === route &&
-        (n.branchIndex || 0) === targetBranch,
-    )
-    .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
-  let finalIndex = targetIndex ?? targetSiblings.length;
-  finalIndex = Math.max(0, Math.min(finalIndex, targetSiblings.length));
-  const newTargetOrder = [
-    ...targetSiblings.slice(0, finalIndex),
-    {
-      ...nodeToMove,
-      gridPosition: { day, time, route },
-      branchIndex: targetBranch,
-      loadInfo: { ...nodeToMove.loadInfo, atDay: day, atTime: time },
-    },
-    ...targetSiblings.slice(finalIndex),
-  ];
-  let newSourceOrder: ScenarioNode[] = [];
-  if (!isSameSlot) {
-    newSourceOrder = nodes
-      .filter(
-        (n) =>
-          n.id !== id &&
-          n.gridPosition.day === oldDay &&
-          n.gridPosition.time === oldTime &&
-          n.gridPosition.route === oldRoute &&
-          (n.branchIndex || 0) === oldBranch,
-      )
-      .sort((a, b) => (a.sortIndex || 0) - (b.sortIndex || 0));
+        (n.branchIndex || 0) === branchIndex &&
+        (n.sortIndex || 0) >= targetIndex
+      ) {
+        return { ...n, sortIndex: (n.sortIndex || 0) + 1 };
+      }
+      return n;
+    });
   }
-  const updatedNodes = nodes.map((n) => {
-    const targetIdx = newTargetOrder.findIndex((x) => x.id === n.id);
-    if (targetIdx !== -1) {
-      return {
-        ...n,
-        sortIndex: targetIdx,
-        branchIndex: targetBranch,
-        gridPosition: { day, time, route },
-        loadInfo:
-          n.id === id
-            ? { ...n.loadInfo, atDay: day, atTime: time }
-            : n.loadInfo,
-      };
-    }
-    if (!isSameSlot) {
-      const sourceIdx = newSourceOrder.findIndex((x) => x.id === n.id);
-      if (sourceIdx !== -1) return { ...n, sortIndex: sourceIdx };
-    }
-    return n;
-  });
-  let normalized = normalizeBranches(updatedNodes, oldRoute);
-  if (oldRoute !== route) normalized = normalizeBranches(normalized, route);
+
+  const updatedNode = {
+    ...nodeToMove,
+    gridPosition: { day, time, route },
+    branchIndex: branchIndex,
+    sortIndex: targetIndex,
+    loadInfo:
+      nodeToMove.id === id
+        ? { ...nodeToMove.loadInfo, atDay: day, atTime: time }
+        : nodeToMove.loadInfo,
+  };
+
+  const result = [...otherNodes, updatedNode];
+
+  let normalized = normalizeBranches(result, nodeToMove.gridPosition.route);
+  if (nodeToMove.gridPosition.route !== route) {
+    normalized = normalizeBranches(normalized, route);
+  }
+
   return normalized;
 };
 
